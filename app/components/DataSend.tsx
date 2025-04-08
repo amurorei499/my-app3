@@ -65,40 +65,32 @@ const DataSend: React.FC<DataSendProps> = ({
 
     setIsLoading(true);
 
-    try {
-      // 現在のタイムスタンプを生成
-      const now = new Date();
-      const timestamp = now.toISOString();
+    // AbortControllerの作成
+    const controller = new AbortController();
 
-      // 送信するデータを構築
-      const attendanceData: Omit<AttendanceData, 'timestamp'> = {
+    try {
+    // タイムスタンプをサーバー側で生成するため、クライアント側では送信しない
+      const attendanceData = {
         email: userData.email,
         family_name: userData.family_name || "",
         name: userData.name || "",
-        location,
+        location: location,
         status_primary: status,
-        status_secondary: secondaryStatus,
-        reason,
-        device: deviceInfo,
+        status_secondary: secondaryStatus || "",
+        reason: reason || "",
+        device: deviceInfo || "",
       };
-      // timestampフィールドを送信しない
-      await fetch('/api/records/attendanceCreate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attendanceData), // timestampを含まない
-      });
 
-      // APIエンドポイントにデータを送信
+      // APIエンドポイントにデータを送信（signal付き）
       const response = await fetch('/api/records/attendanceCreate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attendanceData),
+        signal: controller.signal // AbortController.signalを追加
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+      const errorData = await response.json();
         throw new Error(errorData.error || `Status: ${response.status}`);
       }
 
