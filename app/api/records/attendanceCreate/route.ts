@@ -33,9 +33,8 @@ export async function POST(request: Request) {
 
     // 日本時間で現在時刻を生成
     const now = new Date();
-    const jstTimestamp = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX", {
-      timeZone: "Asia/Tokyo"
-    });
+    now.setHours(now.getHours() + 9);
+    const jstTimestamp = now.toISOString();
 
      // 型アサーションを使用して型エラーを解決
     const attendanceData = {
