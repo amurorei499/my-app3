@@ -161,32 +161,18 @@ const Main = () => {
         position="relative"
         zIndex={1}
       >
-        <Flex align="center">
-          <Box
-            w="40px"
-            h="40px"
-            borderRadius="full"
-            bg="cyan.500"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            mr={3}
-          >
-            <Text fontWeight="bold" fontSize="lg">A</Text>
-          </Box>
-          <Box>
-            <Text fontSize="sm" color="gray.400">
-              {userData[0]?.branch || "未設定"}
-            </Text>
-            <Text fontSize="md" fontWeight="bold">
-              {userData[0]?.name || "ゲスト"} さん
-            </Text>
-          </Box>
-        </Flex>
+        <Box>
+          <Text fontSize="xl" fontWeight="bold" color="cyan.400">
+            {userData[0]?.branch || "未設定支店"}
+          </Text>
+          <Text fontSize="md" color="gray.400">
+            {userData[0]?.team || "未設定班"}
+          </Text>
+        </Box>
 
         <Box textAlign="right">
           <Text fontSize="sm" color="gray.400">{currentDate}</Text>
-          <Text fontSize="xl" fontWeight="bold" color="cyan.400">{currentTime}</Text>
+          <Text color="gray.400">{userData[0]?.name || "ゲスト"} さん</Text>
         </Box>
       </Flex>
 
@@ -215,8 +201,20 @@ const Main = () => {
         />
 
         <Box position="relative" zIndex={1}>
+          {/* タイトル */}
+          <Heading
+            as="h1"
+            textAlign="center"
+            fontSize="2xl"
+            mb={10}
+            letterSpacing="wider"
+          >
+            勤怠管理システム
+          </Heading>
+
           {/* 大きなデジタル時計表示 */}
           <Box textAlign="center" mb={12}>
+            <Text fontSize="md" color="gray.500" mt={2}>{currentDate}</Text>
             <Text
               fontSize="6xl"
               fontWeight="900"
@@ -230,19 +228,7 @@ const Main = () => {
                 {currentTime.split(':')[2] ? currentTime.split(':')[2].slice(0, 2) : "00"}
               </Text>
             </Text>
-            <Text fontSize="md" color="gray.500" mt={2}>{currentDate}</Text>
           </Box>
-
-          {/* タイトル */}
-          <Heading
-            as="h1"
-            textAlign="center"
-            fontSize="2xl"
-            mb={10}
-            letterSpacing="wider"
-          >
-            勤怠管理システム
-          </Heading>
 
           {/* カラフルでモダンなボタングリッド */}
           <Grid
@@ -290,29 +276,52 @@ const Main = () => {
           </Grid>
 
           {/* プロフィール管理ボタン */}
-          <Flex justify="center" gap={5} mt={12}>
-            <Button
-              onClick={() => router.push("/user/profile")}
-              variant="ghost"
-              borderRadius="full"
-              color="gray.300"
-              _hover={{ bg: 'rgba(255,255,255,0.05)' }}
-              size="md"
+          <Box width="100%" maxW="500px" mx="auto" mt={12}>
+            <Flex
+              justify="space-between"
+              align="center"
+              width="100%"
             >
-              プロフィール設定
-            </Button>
-            <Button
-              onClick={onLogoutAlertOpen}
-              variant="outline"
-              borderRadius="full"
-              borderColor="red.500"
-              color="red.400"
-              _hover={{ bg: 'rgba(229,62,62,0.1)' }}
-              size="md"
-            >
-              ログアウト
-            </Button>
-          </Flex>
+              <Button
+                onClick={() => router.push("/user/profile")}
+                variant="ghost"
+                borderRadius="full"
+                color="gray.300"
+                _hover={{ bg: 'rgba(255,255,255,0.05)' }}
+                size="md"
+                flex="1"
+                maxW="160px"
+              >
+                プロフィール設定
+              </Button>
+              <Button
+                onClick={() => router.push("/viewdata")}
+                variant="ghost"
+                borderRadius="full"
+                color="blue.300"
+                _hover={{ bg: 'rgba(0, 123, 255, 0.1)' }}
+                size="md"
+                flex="1"
+                maxW="160px"
+                mx={2}
+              >
+                データ閲覧
+              </Button>
+              <Button
+                onClick={onLogoutAlertOpen}
+                variant="outline"
+                borderRadius="full"
+                borderColor="red.500"
+                color="red.400"
+                _hover={{ bg: 'rgba(229,62,62,0.1)' }}
+                size="md"
+                flex="1"
+                maxW="160px"
+              >
+                ログアウト
+              </Button>
+            </Flex>
+          </Box>
         </Box>
       </Box>
 

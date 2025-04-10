@@ -4,7 +4,6 @@
 
 import React, { useState, useEffect } from "react";
 import { Button, useToast } from "@chakra-ui/react";
-import { AttendanceData } from "../utils/attendanceData";
 import { UserData } from "../utils/userData";
 
 type DataSendProps = {
@@ -14,6 +13,7 @@ type DataSendProps = {
   reason?: string; // 欠勤・公休の理由
   onSuccess?: () => void;
   loading?: boolean;
+  colorScheme?: string; // 追加: カラースキームプロパティ
 };
 
 const DataSend: React.FC<DataSendProps> = ({
@@ -23,6 +23,7 @@ const DataSend: React.FC<DataSendProps> = ({
   reason = "",
   onSuccess,
   loading = false,
+  colorScheme, // 新規追加: 外部からのカラースキーム指定
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(loading);
   const [location, setLocation] = useState<string>("[不明]");
@@ -69,11 +70,13 @@ const DataSend: React.FC<DataSendProps> = ({
     const controller = new AbortController();
 
     try {
-    // タイムスタンプをサーバー側で生成するため、クライアント側では送信しない
+      // タイムスタンプをサーバー側で生成するため、クライアント側では送信しない
       const attendanceData = {
         email: userData.email,
         family_name: userData.family_name || "",
         name: userData.name || "",
+        branch: userData.branch || "",
+        team: userData.team || "",
         location: location,
         status_primary: status,
         status_secondary: secondaryStatus || "",
@@ -90,7 +93,7 @@ const DataSend: React.FC<DataSendProps> = ({
       });
 
       if (!response.ok) {
-      const errorData = await response.json();
+        const errorData = await response.json();
         throw new Error(errorData.error || `Status: ${response.status}`);
       }
 
@@ -123,11 +126,15 @@ const DataSend: React.FC<DataSendProps> = ({
 
   // ボタンのカラースキーム
   const getColorScheme = () => {
+    // 外部から指定されたcolorSchemeがあればそれを優先
+    if (colorScheme) return colorScheme;
+
+    // なければstatusに基づいて決定（画像に合わせて修正）
     switch (status) {
-      case '出勤': return 'teal';
-      case '退勤': return 'cyan';
-      case '欠勤': return 'orange';
-      case '公休': return 'purple';
+      case '出勤': return 'blue';  // 青色（1枚目の画像参照）
+      case '退勤': return 'green'; // 緑色（1枚目の画像参照）
+      case '欠勤': return 'red';   // 赤色（1枚目の画像参照）
+      case '公休': return 'purple'; // 紫色（1枚目の画像参照）
       default: return 'blue';
     }
   };
@@ -139,15 +146,16 @@ const DataSend: React.FC<DataSendProps> = ({
       isLoading={isLoading}
       loadingText="送信中"
       spinnerPlacement="start"
-      size="md"
+      size="lg"
+      width="100%"
       borderRadius="md"
       boxShadow="sm"
-      _hover={{ boxShadow: 'md' }}
+      _hover={{ boxShadow: 'md', transform: 'translateY(-1px)' }}
+      transition="all 0.2s"
     >
       {status}送信
     </Button>
   );
 };
-
 
 export default DataSend;

@@ -1,4 +1,3 @@
-// AttendanceModal.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -14,7 +13,10 @@ import {
   FormControl,
   FormLabel,
   Textarea,
-  Text
+  Text,
+  Box,
+  Flex,
+  Badge
 } from '@chakra-ui/react';
 import DataSend from './DataSend';
 import { UserData } from "../utils/userData";
@@ -30,12 +32,36 @@ const categoryOptions: Record<Category, string[]> = {
   '公休': []
 };
 
+// カテゴリごとのカラースキーム定義
+const categoryColors = {
+  '出勤': {
+    main: 'blue.400',
+    bg: 'blue.900',
+    scheme: 'blue'
+  },
+  '退勤': {
+    main: 'green.400',
+    bg: 'green.900',
+    scheme: 'green'
+  },
+  '欠勤': {
+    main: 'red.400',
+    bg: 'red.900',
+    scheme: 'red'
+  },
+  '公休': {
+    main: 'purple.400',
+    bg: 'purple.900',
+    scheme: 'purple'
+  }
+};
+
 // モーダルの型定義
 type AttendanceModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  primaryCategory: Category; // 型をリテラル型に変更
-  userData: UserData;  // any型からUserData型に変更
+  primaryCategory: Category;
+  userData: UserData;
 };
 
 const AttendanceModal: React.FC<AttendanceModalProps> = ({
@@ -44,9 +70,12 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
   primaryCategory,
   userData
 }) => {
-  // 詳細カテゴリの状態管理（初期値は空にして、useEffectで設定）
+  // 詳細カテゴリの状態管理
   const [secondaryCategory, setSecondaryCategory] = useState<string>('');
   const [reason, setReason] = useState<string>('');
+
+  // 現在の色スキーム
+  const currentColor = categoryColors[primaryCategory];
 
   // primaryCategoryが変わったときに詳細カテゴリを初期化
   useEffect(() => {
@@ -57,7 +86,6 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
     } else {
       setSecondaryCategory('');
     }
-    // 理由もリセット
     setReason('');
   }, [primaryCategory]);
 
@@ -71,46 +99,63 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
-      <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(5px)" />
+      <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
       <ModalContent
         borderRadius="xl"
         boxShadow="xl"
-        bg="white"
+        bg="#1A1A1A" // ダークテーマ背景
+        color="white"  // テキストを白色に
+        overflow="hidden"
       >
+        <Box bg={currentColor.main} py={1} />
         <ModalHeader
           borderBottomWidth="1px"
-          color={
-            primaryCategory === '出勤' ? 'teal.500' :
-            primaryCategory === '退勤' ? 'cyan.500' :
-            primaryCategory === '欠勤' ? 'orange.500' : 'purple.500'
-          }
+          borderColor="whiteAlpha.200"
+          color={currentColor.main}
+          pb={4}
+          display="flex"
+          alignItems="center"
         >
-          {primaryCategory}登録
+          <Badge
+            colorScheme={currentColor.scheme}
+            fontSize="md"
+            p={1}
+            borderRadius="md"
+            mr={2}
+          >
+            {primaryCategory}
+          </Badge>
         </ModalHeader>
-        <ModalCloseButton />
+        <ModalCloseButton color="gray.400" />
         <ModalBody py={6}>
           <VStack spacing={5} align="start">
-            <Text>• {userData?.name || "データがありません"}さん</Text>
-            <Text>• {userData?.branch || "データがありません"}</Text>
-            <Text>• {userData?.team || "データがありません"}</Text>
+            <Box
+              p={4}
+              opacity={0.8}
+              borderRadius="md"
+              width="100%"
+            >
+              <Flex direction="column" gap={2}>
+                <Text fontSize="sm" fontWeight="bold" color="gray.300">ユーザー情報</Text>
+                <Text color="white">• {userData?.name || "データがありません"}さん</Text>
+                <Text color="white">• {userData?.branch || "データがありません"}</Text>
+                <Text color="white">• {userData?.team || "データがありません"}</Text>
+              </Flex>
+            </Box>
 
             {/* 詳細カテゴリ選択（出勤・退勤の場合） */}
             {categoryOptions[primaryCategory]?.length > 0 && (
               <FormControl>
-                <FormLabel fontWeight="medium">{primaryCategory}の種類</FormLabel>
+                <FormLabel fontWeight="medium" color="gray.300">{primaryCategory}の種類</FormLabel>
                 <RadioGroup
                   value={secondaryCategory}
                   onChange={setSecondaryCategory}
-                  colorScheme={
-                    primaryCategory === '出勤' ? 'teal' :
-                    primaryCategory === '退勤' ? 'cyan' :
-                    'orange'
-                  }
+                  colorScheme={currentColor.scheme}
                 >
                   <VStack align="start" spacing={2}>
                     {categoryOptions[primaryCategory].map((option: string) => (
-                      <Radio key={option} value={option}>
-                        {option}
+                      <Radio key={option} value={option} colorScheme={currentColor.scheme}>
+                        <Text color="white">{option}</Text>
                       </Radio>
                     ))}
                   </VStack>
@@ -121,28 +166,36 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
             {/* 理由入力フィールド（欠勤・公休の場合） */}
             {needsReason && (
               <FormControl>
-                <FormLabel fontWeight="medium">理由</FormLabel>
+                <FormLabel fontWeight="medium" color="gray.300">理由</FormLabel>
                 <Textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder={`${primaryCategory}の理由を入力してください`}
                   size="md"
                   resize="vertical"
+                  bg="#2D2D2D"
+                  border="none"
+                  color="white"
+                  _hover={{ bg: "#333333" }}
+                  _focus={{ bg: "#333333", borderColor: currentColor.main }}
                 />
               </FormControl>
             )}
           </VStack>
         </ModalBody>
 
-        <ModalFooter justifyContent="center">
+        <ModalFooter justifyContent="center" borderTopWidth="1px" borderColor="whiteAlpha.200">
           {userData && (
-            <DataSend
-              userData={userData}
-              status={primaryCategory}
-              secondaryStatus={secondaryCategory}
-              reason={reason}
-              onSuccess={handleSuccess}
-            />
+            <Box width="100%">
+              <DataSend
+                userData={userData}
+                status={primaryCategory}
+                secondaryStatus={secondaryCategory}
+                reason={reason}
+                onSuccess={handleSuccess}
+                colorScheme={currentColor.scheme}
+              />
+            </Box>
           )}
         </ModalFooter>
       </ModalContent>

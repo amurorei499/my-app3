@@ -17,9 +17,6 @@ import {
   Flex,
   Button,
   Badge,
-  HStack,
-  Wrap,
-  WrapItem,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { ChevronUpIcon, ChevronDownIcon } from "@chakra-ui/icons";
@@ -27,7 +24,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
 import { AttendanceData } from "@/app/utils/attendanceData";
 
-// 支店アイコンコンポーネント
+// 支店アイコンコンポーネント - tomato.ggスタイル
 const BranchIcon = ({ branch }: { branch: string }) => {
   const getBranchColor = (branch: string) => {
     switch (branch) {
@@ -40,8 +37,8 @@ const BranchIcon = ({ branch }: { branch: string }) => {
 
   return (
     <Box
-      w="24px"
-      h="24px"
+      w="18px"
+      h="18px"
       borderRadius="full"
       bg={getBranchColor(branch)}
       display="flex"
@@ -49,7 +46,8 @@ const BranchIcon = ({ branch }: { branch: string }) => {
       justifyContent="center"
       color="white"
       fontWeight="bold"
-      fontSize="xs"
+      fontSize="10px"
+      border="1px solid rgba(255,255,255,0.2)"
     >
       {branch.charAt(0)}
     </Box>
@@ -68,13 +66,12 @@ export default function ViewDataPage() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
   // ソート状態
-  const [sortField, setSortField] = useState<keyof AttendanceData | "">("");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<keyof AttendanceData | "">("timestamp");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // マスターデータ（フィルターオプション用）
   const [branches, setBranches] = useState<string[]>([]);
   const [teams, setTeams] = useState<string[]>([]);
-
   const bgColor = useColorModeValue("gray.50", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
 
@@ -210,7 +207,6 @@ export default function ViewDataPage() {
     try {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ja-JP', {
-        year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
@@ -233,26 +229,34 @@ export default function ViewDataPage() {
   };
 
   return (
-    <Container maxW="container.xl" py={6}>
-      <Heading as="h1" size="xl" mb={6}>
-        勤怠データ確認
-      </Heading>
+    <Box minH="100vh" bg="#121212" color="white">
+      <Container maxW="container.xl" py={4}>
+        <Heading
+          as="h1"
+          size="lg"
+          mb={4}
+          bgGradient="linear(to-r, cyan.300, blue.500)"
+          bgClip="text"
+        >
+          勤怠データ確認
+        </Heading>
 
-      {/* フィルターセクション - World of Tanks風 */}
-      <Box
-        mb={6}
-        p={4}
-        borderRadius="md"
-        bg={bgColor}
-        borderWidth="1px"
-        borderColor={borderColor}
-      >
-        {/* 支店フィルター - 国旗スタイル */}
+       {/* フィルターセクション - tomato.ggスタイル */}
+        <Box
+          mb={4}
+          p={3}
+          borderRadius="md"
+          bg="#1A1A1A"
+          borderWidth="1px"
+          borderColor="rgba(255,255,255,0.1)"
+        >
+        {/* 支店フィルター */}
         <Flex wrap="wrap" gap={2} mb={4}>
-          <Text fontWeight="bold" mr={4} alignSelf="center">支店:</Text>
+          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.300">支店:</Text>
           <Button
             size="sm"
-            colorScheme={!selectedBranch ? "teal" : "gray"}
+            colorScheme={!selectedBranch ? "cyan" : "gray"}
+            variant={!selectedBranch ? "solid" : "outline"}
             onClick={() => setSelectedBranch(null)}
           >
             全て
@@ -262,7 +266,7 @@ export default function ViewDataPage() {
               key={branch}
               size="sm"
               leftIcon={<BranchIcon branch={branch} />}
-              colorScheme={selectedBranch === branch ? "teal" : "gray"}
+              colorScheme={selectedBranch === branch ? "cyan" : "gray"}
               onClick={() => setSelectedBranch(branch === selectedBranch ? null : branch)}
             >
               {branch}
@@ -270,12 +274,13 @@ export default function ViewDataPage() {
           ))}
         </Flex>
 
-        {/* 班フィルター - 戦車タイプスタイル */}
+        {/* 班フィルター */}
         <Flex wrap="wrap" gap={2} mb={4}>
-          <Text fontWeight="bold" mr={4} alignSelf="center">班:</Text>
+          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.300">班:</Text>
           <Button
             size="sm"
             colorScheme={!selectedTeam ? "blue" : "gray"}
+            variant={!selectedTeam ? "solid" : "outline"}
             onClick={() => setSelectedTeam(null)}
           >
             全て
@@ -315,128 +320,231 @@ export default function ViewDataPage() {
         </Flex>
       </Box>
 
-      {loading ? (
-        <Box textAlign="center" py={10}>
-          <Spinner size="xl" />
-          <Text mt={4}>データを読み込み中...</Text>
-        </Box>
-      ) : error ? (
-        <Box textAlign="center" py={10} color="red.500">
-          <Text>{error}</Text>
-        </Box>
-      ) : displayData.length === 0 ? (
-        <Box textAlign="center" py={10}>
-          <Text>表示するデータがありません。</Text>
-        </Box>
-      ) : (
-        <Box overflowX="auto" borderWidth="1px" borderRadius="lg">
-          <Table variant="simple">
-            <Thead bg={bgColor}>
-              <Tr>
-                <Th
-                  cursor="pointer"
-                  onClick={() => handleSort("timestamp")}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <Flex align="center">
-                    日時
-                    {sortField === "timestamp" && (
-                      sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
-                    )}
-                  </Flex>
-                </Th>
-                <Th
-                  cursor="pointer"
-                  onClick={() => handleSort("name")}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <Flex align="center">
-                    氏名
-                    {sortField === "name" && (
-                      sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
-                    )}
-                  </Flex>
-                </Th>
-                <Th
-                  cursor="pointer"
-                  onClick={() => handleSort("branch")}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <Flex align="center">
-                    支店
-                    {sortField === "branch" && (
-                      sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
-                    )}
-                  </Flex>
-                </Th>
-                <Th
-                  cursor="pointer"
-                  onClick={() => handleSort("team")}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <Flex align="center">
-                    班
-                    {sortField === "team" && (
-                      sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
-                    )}
-                  </Flex>
-                </Th>
-                <Th
-                  cursor="pointer"
-                  onClick={() => handleSort("status_primary")}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <Flex align="center">
-                    ステータス
-                    {sortField === "status_primary" && (
-                      sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
-                    )}
-                  </Flex>
-                </Th>
-                <Th
-                  cursor="pointer"
-                  onClick={() => handleSort("status_secondary")}
-                  _hover={{ bg: useColorModeValue("gray.100", "gray.700") }}
-                >
-                  <Flex align="center">
-                    詳細
-                    {sortField === "status_secondary" && (
-                      sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
-                    )}
-                  </Flex>
-                </Th>
-                <Th>場所</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {displayData.map((item) => (
-                <Tr key={item.id} _hover={{ bg: useColorModeValue("gray.50", "gray.700") }}>
-                  <Td>{formatTimestamp(item.timestamp)}</Td>
-                  <Td>{item.family_name} {item.name}</Td>
-                  <Td>
+        {loading ? (
+          <Box textAlign="center" py={10}>
+            <Spinner size="xl" color="cyan.400" />
+            <Text mt={4} color="gray.400">データを読み込み中...</Text>
+          </Box>
+        ) : error ? (
+          <Box textAlign="center" py={10} color="red.400">
+            <Text>{error}</Text>
+          </Box>
+        ) : displayData.length === 0 ? (
+          <Box textAlign="center" py={10} color="gray.400">
+            <Text>表示するデータがありません。</Text>
+          </Box>
+        ) : (
+          <Box
+            overflowX="auto"
+            borderWidth="1px"
+            borderRadius="lg"
+            borderColor="rgba(255,255,255,0.1)"
+            boxShadow="0 4px 6px rgba(0,0,0,0.3)"
+          >
+            <Table variant="unstyled" size="sm">
+              <Thead bg="#232323">
+                <Tr>
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort("timestamp")}
+                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
                     <Flex align="center">
-                      <BranchIcon branch={item.branch || "-"} />
-                      <Text ml={2}>{item.branch || "-"}</Text>
+                      日時
+                      {sortField === "timestamp" && (
+                        sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
+                      )}
                     </Flex>
-                  </Td>
-                  <Td>{item.team || "-"}</Td>
-                  <Td>
-                    <Badge colorScheme={getStatusColor(item.status_primary)}>
-                      {item.status_primary}
-                    </Badge>
-                  </Td>
-                  <Td>{item.status_secondary || "-"}</Td>
-                  <Td>{item.location}</Td>
+                  </Th>
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort("name")}
+                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
+                    <Flex align="center">
+                      氏名
+                      {sortField === "name" && (
+                        sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
+                      )}
+                    </Flex>
+                  </Th>
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort("branch")}
+                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
+                    <Flex align="center">
+                      支店
+                      {sortField === "branch" && (
+                        sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
+                      )}
+                    </Flex>
+                  </Th>
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort("team")}
+                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
+                    <Flex align="center">
+                      班
+                      {sortField === "team" && (
+                        sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
+                      )}
+                    </Flex>
+                  </Th>
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort("status_primary")}
+                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
+                    <Flex align="center">
+                      状態
+                      {sortField === "status_primary" && (
+                        sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
+                      )}
+                    </Flex>
+                  </Th>
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort("status_secondary")}
+                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
+                    <Flex align="center">
+                      詳細
+                      {sortField === "status_secondary" && (
+                        sortDirection === "asc" ? <ChevronUpIcon ml={1} /> : <ChevronDownIcon ml={1} />
+                      )}
+                    </Flex>
+                  </Th>
+                  <Th
+                    color="gray.300"
+                    fontSize="xs"
+                    py={2}
+                    px={3}
+                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                  >
+                    場所
+                  </Th>
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </Box>
-      )}
+              </Thead>
+              <Tbody>
+                {displayData.map((item, index) => (
+                  <Tr
+                    key={item.id}
+                    bg={index % 2 === 0 ? "#1A1A1A" : "#232323"}
+                    _hover={{ bg: "#2A2A2A" }}
+                  >
+                    <Td
+                      borderColor="transparent"
+                      color="white"
+                      py={1.5}
+                      px={3}
+                      fontSize="sm"
+                    >
+                      {formatTimestamp(item.timestamp)}
+                    </Td>
+                    <Td
+                      borderColor="transparent"
+                      color="white"
+                      py={1.5}
+                      px={3}
+                      fontSize="sm"
+                    >
+                      {item.family_name} {item.name}
+                    </Td>
+                    <Td
+                      borderColor="transparent"
+                      py={1.5}
+                      px={3}
+                    >
+                      <Flex align="center">
+                        <BranchIcon branch={item.branch || "-"} />
+                        <Text ml={2} color="white" fontSize="sm">{item.branch || "-"}</Text>
+                      </Flex>
+                    </Td>
+                    <Td
+                      borderColor="transparent"
+                      color="white"
+                      py={1.5}
+                      px={3}
+                      fontSize="sm"
+                    >
+                      {item.team || "-"}
+                    </Td>
+                    <Td
+                      borderColor="transparent"
+                      py={1.5}
+                      px={3}
+                    >
+                      <Badge
+                        colorScheme={getStatusColor(item.status_primary)}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                        borderRadius="sm"
+                      >
+                        {item.status_primary}
+                      </Badge>
+                    </Td>
+                    <Td
+                      borderColor="transparent"
+                      color="gray.300"
+                      py={1.5}
+                      px={3}
+                      fontSize="sm"
+                    >
+                      {item.status_secondary || "-"}
+                    </Td>
+                    <Td
+                      borderColor="transparent"
+                      color="gray.300"
+                      py={1.5}
+                      px={3}
+                      fontSize="xs"
+                    >
+                      {item.location}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </Box>
+        )}
 
-      <Text mt={4} fontSize="sm" color="gray.600">
-        {displayData.length}件のデータを表示中（全{attendanceData.length}件）
-      </Text>
-    </Container>
+        <Text mt={3} fontSize="xs" color="gray.400">
+          {displayData.length}件のデータを表示中（全{attendanceData.length}件）
+        </Text>
+      </Container>
+    </Box>
   );
 }
