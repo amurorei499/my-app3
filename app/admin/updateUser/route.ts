@@ -1,83 +1,55 @@
 // /app/api/admin/updateUser/route.ts
 import { NextResponse } from "next/server";
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import admin from "firebase-admin";
 
 // Firebase Admin初期化
-if (!getApps().length) {
+if (!admin.apps.length) {
   const serviceAccount = JSON.parse(
     process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string
   );
-
-  initializeApp({
-    credential: cert(serviceAccount),
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
   });
 }
 
-const auth = getAuth();
-const db = getFirestore();
-
 export async function POST(request: Request) {
   try {
-    const { userId, userData, setCustomClaims } = await request.json();
+    const { userId, userData } = await request.json();
 
-    if (!userId) {
+    // 必須パラメータチェック
+    if (!userId || !userData) {
       return NextResponse.json(
-        { success: false, error: "ユーザーIDが必要です" },
+        { success: false, error: "必要なパラメータが不足しています" },
         { status: 400 }
       );
     }
 
-    // Firestoreユーザーデータの更新
-    await db.collection("users").doc(userId).update({
-      family_name: userData.family_name,
-      name: userData.name,
-      branch: userData.branch,
-      team: userData.team,
-      role: userData.role,
-      updatedAt: new Date().toISOString(),
+    // 権限更新処理
+    await admin.auth().setCustomUserClaims(userId, {
+      ...userData.customClaims,
+      role: userData.role || null // undefinedをnullに変換
     });
 
-    // カスタムクレームの設定（権限情報）
-    if (setCustomClaims && userData.role) {
-      // カスタムクレームオブジェクトの作成
-      const claims: Record<string, boolean> = {};
-
-      // 役割に応じた権限設定
-      switch (userData.role) {
-        case "admin":
-          claims.admin = true;
-          claims.manager = true;
-          claims.viewer = true;
-          break;
-        case "manager":
-          claims.manager = true;
-          claims.viewer = true;
-          break;
-        case "viewer":
-          claims.viewer = true;
-          break;
-        default:
-          // 権限なしの場合は空のオブジェクト
-          break;
-      }
-
-      // Firebase Authユーザーにカスタムクレームを設定
-      await auth.setCustomUserClaims(userId, claims);
-    }
+    // Firestoreユーザーデータ更新
+    await admin.firestore()
+      .collection("users")
+      .doc(userId)
+      .update({
+        ...userData,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
 
     return NextResponse.json({
       success: true,
-      message: "ユーザー情報が更新されました",
+      message: "ユーザー情報を更新しました"
     });
+
   } catch (error) {
-    console.error("ユーザー更新エラー:", error);
+    console.error("更新エラー:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "ユーザー情報の更新に失敗しました",
-        details: error instanceof Error ? error.message : "不明なエラー",
+        error: error instanceof Error ? error.message : "不明なエラー"
       },
       { status: 500 }
     );
