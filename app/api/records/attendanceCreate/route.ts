@@ -1,9 +1,8 @@
 // app/api/attendanceCreate/route.ts
 import { NextResponse } from "next/server";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection ,getDoc ,doc } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
 import { z } from "zod";
-import { format } from "date-fns-tz";
 import { AttendanceData } from "@/app/utils/attendanceData";
 
 // AttendanceDataスキーマ - 2層構造に対応
@@ -31,6 +30,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // 検証済みデータからemailを取得
+    const validatedData = validation.data;
+    const email = validatedData.email; // この行が重要
+
+    // ユーザー情報を取得
+    const userRef = doc(db, "users", email);
+    const userDoc = await getDoc(userRef);
+    const userData = userDoc.exists() ? userDoc.data() : null;
+
     // 日本時間で現在時刻を生成
     const now = new Date();
     now.setHours(now.getHours() + 9);
@@ -40,7 +48,9 @@ export async function POST(request: Request) {
     const attendanceData = {
       ...validation.data,
       timestamp: jstTimestamp,
-      device: validation.data.device || "Webブラウザ"
+      device: validation.data.device || "Webブラウザ",
+      branch: userData?.branch || "不明", // 支店情報を追加
+      team: userData?.team || "不明",     // 班情報を追加
     } as AttendanceData;
 
     const attendanceRef = collection(db, "attendanceCreate");

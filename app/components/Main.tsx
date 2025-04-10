@@ -1,5 +1,4 @@
 // /app/components/Main.tsx
-
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,29 +24,39 @@ import {
 import { User } from "firebase/auth";
 import { UserData } from "../utils/userData";
 import AttendanceModal, { Category } from './AttendanceModal';
-
+import { Spinner } from "@chakra-ui/react";
 
 const Main = () => {
-  // 既存のstate変数をそのまま維持
-  const [userData, setUserData] = useState<UserData []>([]);
+  // State variables
+  const [userData, setUserData] = useState<UserData[]>([]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [currentCategory, setCurrentCategory] = useState<Category>('出勤');
   const cancelRef = useRef(null);
   const toast = useToast();
   const router = useRouter();
-  const [currentCategory, setCurrentCategory] = useState<Category>('出勤');
-  const openModal = (category: Category) => {
-    setCurrentCategory(category);
-    onOpen();
-  };
+
+  // Modal controls
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
-      isOpen: isLogoutAlertOpen,
-      onOpen: onLogoutAlertOpen,
-      onClose: onLogoutAlertClose
+    isOpen: isLogoutAlertOpen,
+    onOpen: onLogoutAlertOpen,
+    onClose: onLogoutAlertClose
   } = useDisclosure();
 
+  // リアルタイム時計表示用の状態
+  const [currentTime, setCurrentTime] = useState("");
+
+  // 時計更新用エフェクト
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('ja-JP'));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   /** Firestoreデータ取得 **/
   const fetchDb = async (email: string) => {
@@ -57,17 +66,14 @@ const Main = () => {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        console.log("fetchStudies:", email, data);
         setUserData(data.data);
       } else {
-        console.error("fetchStudiesError", email, data);
-        throw new Error(data.error || "Failed to fetch studies.");
+        throw new Error(data.error || "Failed to fetch user data");
       }
     } catch (err: unknown) {
       console.error("Error in fetchStudies:", err);
       toast({
         title: "データ取得に失敗しました",
-        position: "top",
         status: "error",
         duration: 2000,
         isClosable: true,
@@ -77,89 +83,153 @@ const Main = () => {
     }
   };
 
-  /** Firestore確認 **/
+  // 認証状態の監視
   useEffect(() => {
-    if (email) {
-      fetchDb(email);
-      console.log("useEffectFirestore:", email, user);
-    }
-  }, [user]);
-
-  // ユーザーがセッション中か判定する処理を追加
-  useEffect(() => {
-    const authUser = auth.onAuthStateChanged((user) => {
-      setUser(user);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        setEmail(user.email as string);
+        setUser(user);
+        setEmail(user.email || "");
+        fetchDb(user.email || "");
       } else {
         router.push("/user/login");
       }
     });
 
-    return () => {
-      authUser(); // クリーンアップ
-    };
+    return () => unsubscribe();
   }, []);
 
-  /**ログアウト処理 **/
+  /** ログアウト処理 **/
   const handleLogout = async () => {
-    //async/awaitによる非同期通信
-    setLoading(true); //ローディング中にセット
+    setLoading(true);
     try {
-      const usertLogout = await auth.signOut(); //Firebase SDKのsignOutによるログアウト処理
-      console.log("User Logout:", usertLogout);
+      await auth.signOut();
       toast({
-        //ChakraUIのトースト機能で、ログアウト成功メッセージを表示
         title: "ログアウトしました",
-        position: "top",
         status: "success",
         duration: 2000,
         isClosable: true,
       });
-      router.push("/user/login"); //ログアウト成功時は、useRouterの機能で、"/user/login"に移動
+      router.push("/user/login");
     } catch (error) {
-      //エラーの場合は、
-      console.error("Error during logout:", error);
+      console.error("Logout error:", error);
       toast({
-        //ChakraUIのトースト機能で、ログアウト失敗メッセージを表示
         title: "ログアウトに失敗しました",
         description: `${error}`,
-        position: "top",
         status: "error",
         duration: 4000,
         isClosable: true,
       });
     } finally {
-      setLoading(false); //最後にローディング状態を解除
+      setLoading(false);
     }
   };
 
+  if (!user) {
+    return (
+      <Flex minH="100vh" align="center" justify="center">
+        <Spinner size="xl" />
+      </Flex>
+    );
+  }
+
   return (
-      <Flex direction="column" align="center" minHeight="100vh" padding={4} background="gray.50">
-      {/* 左上に支店名と班名 */}
-          <Flex
-              width="100%"
-              bgGradient="linear(to-r, teal.500, cyan.500)"
-              py={4}
-              px={8}
-              borderRadius="md"
-              boxShadow="sm"
-              justify="space-between"
-              mb={4}
+    <Flex
+      direction="column"
+      minH="100vh"
+      p={4}
+      bgGradient="linear(to-br, gray.100, blue.50)"
+    >
+      {/* ヘッダーセクション */}
+      <Flex
+        bg="white"
+        p={4}
+        borderRadius="lg"
+        boxShadow="md"
+        justify="space-between"
+        align="center"
+        mb={8}
+      >
+        <Box>
+          <Text fontSize="xl" fontWeight="bold" color="blue.600">
+            {userData[0]?.branch || "未設定"}
+          </Text>
+          <Text color="gray.600">{userData[0]?.team || "未設定"}</Text>
+        </Box>
+
+        <Box textAlign="right">
+          <Text fontSize="2xl" fontWeight="bold" color="gray.700">
+            {currentTime}
+          </Text>
+          <Text color="gray.600">{userData[0]?.name || "ゲスト"} さん</Text>
+        </Box>
+      </Flex>
+
+      {/* メインコンテンツ */}
+      <Flex direction="column" align="center" flex={1}>
+        <Heading
+          as="h1"
+          size="xl"
+          mb={8}
+          bgGradient="linear(to-r, blue.600, purple.600)"
+          bgClip="text"
+        >
+          勤怠管理システム
+        </Heading>
+
+        {/* アクションボタングリッド */}
+        <HStack
+          spacing={6}
+          mb={12}
+          flexWrap="wrap"
+          justify="center"
+        >
+          {['出勤', '退勤', '欠勤', '公休'].map((category) => (
+            <Button
+              key={category}
+              onClick={() => {
+                setCurrentCategory(category as Category);
+                onOpen();
+              }}
+              colorScheme={
+                category === '出勤' ? 'blue' :
+                category === '退勤' ? 'green' :
+                category === '欠勤' ? 'red' : 'purple'
+              }
+              size="lg"
+              minW="120px"
+              height="120px"
+              borderRadius="xl"
+              boxShadow="lg"
+              _hover={{ transform: "scale(1.05)" }}
+              transition="all 0.2s"
+            >
+              <Text fontSize="2xl">{category}</Text>
+            </Button>
+          ))}
+        </HStack>
+
+        {/* プロフィール管理 */}
+        <Flex gap={4} mt="auto">
+          <Button
+            colorScheme="blue"
+            variant="outline"
+            onClick={() => router.push("/user/profile")}
+            _hover={{ bg: 'blue.50' }}
           >
-            <Flex>
-              <Box><Text fontWeight="bold" color="white">{userData[0]?.branch}</Text></Box>
-              <Box><Text color="whiteAlpha.800">{userData[0]?.team}</Text></Box>
-            </Flex>
-            <Box>
-              <Text color="white">ようこそ {userData[0]?.name || "データがありません"} さん</Text>
-            </Box>
-          </Flex>
+            プロフィール設定
+          </Button>
+          <Button
+            colorScheme="red"
+            variant="outline"
+            onClick={onLogoutAlertOpen}
+            _hover={{ bg: 'red.50' }}
+          >
+            ログアウト
+          </Button>
+        </Flex>
+      </Flex>
 
-      {/* 中央の見出し */}
-      <Heading as="h1" size="xl" mb={6}>勤怠管理サイト</Heading>
-
-      {/* 勤怠モーダル - 正しいuseDisclosureの値を使用 */}
+      {/* モーダル */}
       <AttendanceModal
         isOpen={isOpen}
         onClose={onClose}
@@ -167,97 +237,39 @@ const Main = () => {
         userData={userData[0]}
       />
 
-      {/* 勤怠ボタン部分の修正*/}
-      <Box p={6} textAlign="center">
-        <HStack spacing={4} justify="center">
-          <Button
-            onClick={() => openModal('出勤')}
-            colorScheme="teal"
-            variant="solid"
-            size="lg"
-            boxShadow="md"
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-          >
-            出勤
-          </Button>
-          <Button
-            onClick={() => openModal('退勤')}
-            colorScheme="cyan"
-            variant="solid"
-            size="lg"
-            boxShadow="md"
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-          >
-            退勤
-          </Button>
-          <Button
-            onClick={() => openModal('欠勤')}
-            colorScheme="orange"
-            variant="solid"
-            size="lg"
-            boxShadow="md"
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-          >
-            欠勤
-          </Button>
-          <Button
-            onClick={() => openModal('公休')}
-            colorScheme="purple"
-            variant="solid"
-            size="lg"
-            boxShadow="md"
-            _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-          >
-            公休
-          </Button>
-        </HStack>
-      </Box>
-
-      {/* 下部のプロフィール変更とログアウトボタン */}
-      <Flex direction="row" gap={4}>
-        <Button
-          colorScheme="teal"
-          variant="outline"
-          onClick={() => router.push("/user/profile")}
-        >
-          プロフィール変更
-        </Button>
-          <Stack spacing={3}>
-            <Button width="100%" variant="outline" onClick={onLogoutAlertOpen}>
-              ログアウト
-            </Button>
-            <AlertDialog
-                motionPreset="slideInBottom"
-                leastDestructiveRef={cancelRef}
-                onClose={onLogoutAlertClose}
-                isOpen={isLogoutAlertOpen}
-                isCentered
-            >
-              <AlertDialogOverlay />
-              <AlertDialogContent>
-                <AlertDialogHeader>ログアウト</AlertDialogHeader>
-                <AlertDialogCloseButton />
-                <AlertDialogBody>ログアウトしますか?</AlertDialogBody>
-                <AlertDialogFooter>
-                  <Button ref={cancelRef} onClick={onLogoutAlertClose}>
-                    Cancel
-                  </Button>
-                  <Button
-                      isLoading={loading} //追加
-                      loadingText="Loading"
-                      spinnerPlacement="start"
-                      colorScheme="red"
-                      ml={3}
-                      onClick={handleLogout} //変更
-                  >
-                    ログアウト
-                  </Button>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </Stack>
-      </Flex>
+      {/* ログアウト確認ダイアログ */}
+      <AlertDialog
+        leastDestructiveRef={cancelRef}
+        isOpen={isLogoutAlertOpen}
+        onClose={onLogoutAlertClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              ログアウト確認
+            </AlertDialogHeader>
+            <AlertDialogCloseButton />
+            <AlertDialogBody>
+              本当にログアウトしますか？
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onLogoutAlertClose}>
+                キャンセル
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={handleLogout}
+                ml={3}
+                isLoading={loading}
+              >
+                ログアウト
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Flex>
   );
 }
- export default Main;
+
+export default Main;

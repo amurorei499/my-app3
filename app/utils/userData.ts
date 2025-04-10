@@ -7,4 +7,7 @@ export type UserData = {
   name: string;
   branch: string;
   team: string;
+  role?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
