@@ -1,5 +1,6 @@
 // /app/components/Main.tsx
 "use client";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/app/utils/firebase";
@@ -15,16 +16,17 @@ import {
   Button,
   Flex,
   Heading,
-  HStack,
-  Stack,
+  Grid,
   Text,
   useDisclosure,
   useToast,
+  Icon,
 } from "@chakra-ui/react";
 import { User } from "firebase/auth";
 import { UserData } from "../utils/userData";
 import AttendanceModal, { Category } from './AttendanceModal';
 import { Spinner } from "@chakra-ui/react";
+import { MdLogin, MdLogout, MdSick, MdHotel } from "react-icons/md";
 
 const Main = () => {
   // State variables
@@ -47,12 +49,21 @@ const Main = () => {
 
   // リアルタイム時計表示用の状態
   const [currentTime, setCurrentTime] = useState("");
+  const [currentDate, setCurrentDate] = useState("");
 
   // 時計更新用エフェクト
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString('ja-JP'));
+      setCurrentDate(
+        now.toLocaleDateString('ja-JP', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      );
     }, 1000);
 
     return () => clearInterval(timer);
@@ -126,108 +137,184 @@ const Main = () => {
 
   if (!user) {
     return (
-      <Flex minH="100vh" align="center" justify="center">
-        <Spinner size="xl" />
+      <Flex minH="100vh" align="center" justify="center" bg="#121212">
+        <Spinner size="xl" color="cyan.400"/>
       </Flex>
     );
   }
 
   return (
-    <Flex
-      direction="column"
+    <Box
       minH="100vh"
-      p={4}
-      bgGradient="linear(to-br, gray.100, blue.50)"
+      bg="#121212" // ほぼ黒に近い暗いグレー
+      color="white"
     >
-      {/* ヘッダーセクション */}
+      {/* ヘッダーセクション - 洗練された暗いデザイン */}
       <Flex
-        bg="white"
-        p={4}
-        borderRadius="lg"
-        boxShadow="md"
+        bg="#1A1A1A"
+        borderBottom="1px solid"
+        borderColor="rgba(255,255,255,0.1)"
+        py={4}
+        px={6}
         justify="space-between"
         align="center"
-        mb={8}
+        position="relative"
+        zIndex={1}
       >
-        <Box>
-          <Text fontSize="xl" fontWeight="bold" color="blue.600">
-            {userData[0]?.branch || "未設定"}
-          </Text>
-          <Text color="gray.600">{userData[0]?.team || "未設定"}</Text>
-        </Box>
+        <Flex align="center">
+          <Box
+            w="40px"
+            h="40px"
+            borderRadius="full"
+            bg="cyan.500"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            mr={3}
+          >
+            <Text fontWeight="bold" fontSize="lg">A</Text>
+          </Box>
+          <Box>
+            <Text fontSize="sm" color="gray.400">
+              {userData[0]?.branch || "未設定"}
+            </Text>
+            <Text fontSize="md" fontWeight="bold">
+              {userData[0]?.name || "ゲスト"} さん
+            </Text>
+          </Box>
+        </Flex>
 
         <Box textAlign="right">
-          <Text fontSize="2xl" fontWeight="bold" color="gray.700">
-            {currentTime}
-          </Text>
-          <Text color="gray.600">{userData[0]?.name || "ゲスト"} さん</Text>
+          <Text fontSize="sm" color="gray.400">{currentDate}</Text>
+          <Text fontSize="xl" fontWeight="bold" color="cyan.400">{currentTime}</Text>
         </Box>
       </Flex>
 
       {/* メインコンテンツ */}
-      <Flex direction="column" align="center" flex={1}>
-        <Heading
-          as="h1"
-          size="xl"
-          mb={8}
-          bgGradient="linear(to-r, blue.600, purple.600)"
-          bgClip="text"
-        >
-          勤怠管理システム
-        </Heading>
+      <Box
+        maxW="900px"
+        mx="auto"
+        pt={10}
+        pb={10}
+        px={4}
+        position="relative"
+      >
+        {/* グローエフェクト */}
+        <Box
+          position="absolute"
+          top="50%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          w="300px"
+          h="300px"
+          bg="cyan.600"
+          filter="blur(120px)"
+          opacity={0.15}
+          zIndex={0}
+          borderRadius="full"
+        />
 
-        {/* アクションボタングリッド */}
-        <HStack
-          spacing={6}
-          mb={12}
-          flexWrap="wrap"
-          justify="center"
-        >
-          {['出勤', '退勤', '欠勤', '公休'].map((category) => (
-            <Button
-              key={category}
-              onClick={() => {
-                setCurrentCategory(category as Category);
-                onOpen();
-              }}
-              colorScheme={
-                category === '出勤' ? 'blue' :
-                category === '退勤' ? 'green' :
-                category === '欠勤' ? 'red' : 'purple'
-              }
-              size="lg"
-              minW="120px"
-              height="120px"
-              borderRadius="xl"
-              boxShadow="lg"
-              _hover={{ transform: "scale(1.05)" }}
-              transition="all 0.2s"
+        <Box position="relative" zIndex={1}>
+          {/* 大きなデジタル時計表示 */}
+          <Box textAlign="center" mb={12}>
+            <Text
+              fontSize="6xl"
+              fontWeight="900"
+              letterSpacing="wider"
+              bgGradient="linear(to-r, cyan.300, blue.500)"
+              bgClip="text"
+              lineHeight="1"
             >
-              <Text fontSize="2xl">{category}</Text>
-            </Button>
-          ))}
-        </HStack>
+              {currentTime.split(':').slice(0, 2).join(':')}
+              <Text as="span" fontSize="3xl" color="gray.500" verticalAlign="top" ml={1}>
+                {currentTime.split(':')[2] ? currentTime.split(':')[2].slice(0, 2) : "00"}
+              </Text>
+            </Text>
+            <Text fontSize="md" color="gray.500" mt={2}>{currentDate}</Text>
+          </Box>
 
-        {/* プロフィール管理 */}
-        <Flex gap={4} mt="auto">
-          <Button
-            colorScheme="blue"
-            variant="outline"
-            onClick={() => router.push("/user/profile")}
-            _hover={{ bg: 'blue.50' }}
+          {/* タイトル */}
+          <Heading
+            as="h1"
+            textAlign="center"
+            fontSize="2xl"
+            mb={10}
+            letterSpacing="wider"
           >
-            プロフィール設定
-          </Button>
-          <Button
-            colorScheme="red"
-            variant="outline"
-            onClick={onLogoutAlertOpen}
-            _hover={{ bg: 'red.50' }}
+            勤怠管理システム
+          </Heading>
+
+          {/* カラフルでモダンなボタングリッド */}
+          <Grid
+            templateColumns={{base: "1fr", md: "repeat(2, 1fr)"}}
+            gap={6}
+            mb={10}
           >
-            ログアウト
-          </Button>
-        </Flex>
-      </Flex>
+            {[
+              { name: '出勤', icon: MdLogin, color: 'blue.400' },
+              { name: '退勤', icon: MdLogout, color: 'green.400' },
+              { name: '欠勤', icon: MdSick, color: 'red.400' },
+              { name: '公休', icon: MdHotel, color: 'purple.400' }
+            ].map((item) => (
+              <Button
+                key={item.name}
+                onClick={() => {
+                  setCurrentCategory(item.name as Category);
+                  onOpen();
+                }}
+                height="100px"
+                bg="#1A1A1A"
+                color="white"
+                borderRadius="xl"
+                border="1px solid"
+                borderColor="#333"
+                _hover={{
+                  borderColor: item.color,
+                  boxShadow: `0 0 20px -5px ${item.color}`,
+                  transform: "translateY(-2px)"
+                }}
+                _active={{
+                  transform: "scale(0.98)",
+                }}
+                transition="all 0.3s ease"
+                position="relative"
+                overflow="hidden"
+              >
+                <Box position="absolute" top={0} left={0} h="5px" w="full" bg={item.color} />
+                <Flex direction="column" align="center">
+                  <Icon as={item.icon} fontSize="2xl" mb={2} color={item.color} />
+                  <Text fontSize="xl">{item.name}</Text>
+                </Flex>
+              </Button>
+            ))}
+          </Grid>
+
+          {/* プロフィール管理ボタン */}
+          <Flex justify="center" gap={5} mt={12}>
+            <Button
+              onClick={() => router.push("/user/profile")}
+              variant="ghost"
+              borderRadius="full"
+              color="gray.300"
+              _hover={{ bg: 'rgba(255,255,255,0.05)' }}
+              size="md"
+            >
+              プロフィール設定
+            </Button>
+            <Button
+              onClick={onLogoutAlertOpen}
+              variant="outline"
+              borderRadius="full"
+              borderColor="red.500"
+              color="red.400"
+              _hover={{ bg: 'rgba(229,62,62,0.1)' }}
+              size="md"
+            >
+              ログアウト
+            </Button>
+          </Flex>
+        </Box>
+      </Box>
 
       {/* モーダル */}
       <AttendanceModal
@@ -237,14 +324,14 @@ const Main = () => {
         userData={userData[0]}
       />
 
-      {/* ログアウト確認ダイアログ */}
+      {/* ログアウトダイアログ */}
       <AlertDialog
         leastDestructiveRef={cancelRef}
         isOpen={isLogoutAlertOpen}
         onClose={onLogoutAlertClose}
       >
         <AlertDialogOverlay>
-          <AlertDialogContent>
+          <AlertDialogContent bg="#1A1A1A" color="white" borderRadius="xl">
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
               ログアウト確認
             </AlertDialogHeader>
@@ -253,13 +340,14 @@ const Main = () => {
               本当にログアウトしますか？
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onLogoutAlertClose}>
+              <Button ref={cancelRef} variant="ghost" onClick={onLogoutAlertClose}>
                 キャンセル
               </Button>
               <Button
-                colorScheme="red"
-                onClick={handleLogout}
+                bg="red.500"
+                _hover={{ bg: 'red.600' }}
                 ml={3}
+                onClick={handleLogout}
                 isLoading={loading}
               >
                 ログアウト
@@ -268,8 +356,8 @@ const Main = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
-    </Flex>
+    </Box>
   );
-}
+};
 
 export default Main;
