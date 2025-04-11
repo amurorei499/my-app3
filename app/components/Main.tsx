@@ -143,6 +143,16 @@ const Main = () => {
     );
   }
 
+  // 権限チェック関数を追加
+  const checkAdminPermission = (userData: UserData[]) => {
+    // 特定UIDのユーザーに管理者権限を付与
+    const adminUID = 'RwHDYu1wkPVrRUJ13kiMMFrB9E72';
+    return (
+      userData[0]?.role === 'admin' ||
+      auth.currentUser?.uid === adminUID
+    );
+  };
+
   return (
     <Box
       minH="100vh"
@@ -294,19 +304,21 @@ const Main = () => {
               >
                 プロフィール設定
               </Button>
-              <Button
-                onClick={() => router.push("/viewdata")}
-                variant="ghost"
-                borderRadius="full"
-                color="blue.300"
-                _hover={{ bg: 'rgba(0, 123, 255, 0.1)' }}
-                size="md"
-                flex="1"
-                maxW="160px"
-                mx={2}
-              >
-                データ閲覧
-              </Button>
+              {checkAdminPermission(userData) && (
+                <Button
+                  onClick={() => router.push("/viewdata")}
+                  variant="ghost"
+                  borderRadius="full"
+                  color="blue.300"
+                  _hover={{ bg: 'rgba(0, 123, 255, 0.1)' }}
+                  size="md"
+                  flex="1"
+                  maxW="160px"
+                  mx={2}
+                >
+                  データ閲覧
+                </Button>
+              )}
               <Button
                 onClick={onLogoutAlertOpen}
                 variant="outline"

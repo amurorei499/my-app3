@@ -2,12 +2,13 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
   Card,
+  Container,
   CardBody,
   Flex,
   FormControl,
@@ -15,6 +16,8 @@ import {
   Heading,
   Input,
   InputGroup,
+  Select,
+  Stack,
   InputLeftElement,
   Text,
   useToast,
@@ -22,26 +25,37 @@ import {
 import { FaUserCheck } from "react-icons/fa";
 import { RiLockPasswordFill } from "react-icons/ri";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore"; // Firestoreをインポート
-import { auth, db } from "@/app/utils/firebase"; // dbもインポート
-import { UserData } from "@/app/utils/userData"; // UserData型をインポート
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/app/utils/firebase";
+import { UserData } from "@/app/utils/userData";
+import { branches, getTeamsByBranch, BranchName } from "@/app/utils/branchData";
 
 const Register = () => {
   const [formState, setFormState] = useState({
     email: "",
     password: "",
     passwordConf: "",
-    family_name: "", // 姓を追加
-    name: "", // 名を追加
-    branch: "", // 支店を追加
-    team: "", // チームを追加
+    family_name: "",
+    name: "",
+    branch: "",
+    team: "",
   });
+  const [availableTeams, setAvailableTeams] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const toast = useToast();
 
-  // input入力値変更時の処理（変更なし）
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 支店が変更された時の処理
+  useEffect(() => {
+    if (formState.branch) {
+      setAvailableTeams(getTeamsByBranch(formState.branch as BranchName));
+      setFormState(prev => ({ ...prev, team: "" }));
+    } else {
+      setAvailableTeams([]);
+    }
+  }, [formState.branch]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormState((prevState) => ({
       ...prevState,
@@ -49,12 +63,10 @@ const Register = () => {
     }));
   };
 
-  //登録するボタンクリック時処理（修正）
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
-    // バリデーションチェック
     if (formState.password !== formState.passwordConf) {
       toast({
         title: "パスワードが一致しません",
@@ -78,17 +90,12 @@ const Register = () => {
     }
 
     try {
-      // 1. Firebase Authenticationでユーザーを作成
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formState.email,
         formState.password
       );
 
-      // 2. 作成したユーザーのuidを取得
-      const user = userCredential.user;
-
-      // 3. Firestoreにユーザーデータを保存
       const userData: UserData = {
         email: formState.email,
         family_name: formState.family_name,
@@ -97,12 +104,8 @@ const Register = () => {
         team: formState.team,
       };
 
-      // Firestoreにドキュメントを作成（emailをドキュメントIDとして使用）
       await setDoc(doc(db, "users", formState.email), userData);
 
-      console.log("User registered successfully:", userCredential);
-
-      // 成功メッセージを表示
       toast({
         title: "ユーザー登録が完了しました",
         position: "top",
@@ -111,7 +114,6 @@ const Register = () => {
         isClosable: true,
       });
 
-      // メインページに遷移
       router.push("/");
 
     } catch (error: unknown) {
@@ -130,141 +132,152 @@ const Register = () => {
   };
 
   return (
-    <>
-      <Flex justifyContent="center" boxSize="fit-content" mx="auto" p={5}>
-        <Card size={{ base: "sm", md: "lg" }} p={4}>
-          <Heading size="md" textAlign="center" mb={4}>
-            ユーザー登録
-          </Heading>
-          <CardBody>
-            <form onSubmit={handleSignup}>
-              {/* ユーザー情報入力フィールドを追加 */}
-              <FormControl mb={3}>
-                <FormLabel>姓</FormLabel>
+    <Flex justifyContent="center" boxSize="fit-content" mx="auto" p={5}>
+      <Card size={{ base: "sm", md: "lg" }} p={4}>
+        <Heading size="md" textAlign="center" mb={4}>
+          ユーザー登録
+        </Heading>
+        <CardBody>
+          <form onSubmit={handleSignup}>
+            <FormControl mb={3}>
+              <FormLabel>姓</FormLabel>
+              <Input
+                name="family_name"
+                value={formState.family_name}
+                onChange={handleInputChange}
+                placeholder="姓を入力"
+                required
+              />
+            </FormControl>
+
+            <FormControl mb={3}>
+              <FormLabel>名</FormLabel>
+              <Input
+                name="name"
+                value={formState.name}
+                onChange={handleInputChange}
+                placeholder="名を入力"
+                required
+              />
+            </FormControl>
+
+            {/* 支店選択ドロップダウン */}
+            <FormControl mb={3}>
+              <FormLabel>支店</FormLabel>
+              <Select
+                name="branch"
+                value={formState.branch}
+                onChange={handleInputChange}
+                placeholder="支店を選択"
+                required
+              >
+                {branches.map((branch) => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* 班選択ドロップダウン */}
+            <FormControl mb={3}>
+              <FormLabel>班</FormLabel>
+              <Select
+                name="team"
+                value={formState.team}
+                onChange={handleInputChange}
+                placeholder="班を選択"
+                required
+                disabled={!formState.branch}
+              >
+                {availableTeams.map((team) => (
+                  <option key={team} value={team}>
+                    {team}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl mb={3}>
+              <FormLabel>メールアドレス</FormLabel>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <FaUserCheck color="gray" />
+                </InputLeftElement>
                 <Input
-                  name="family_name"
-                  value={formState.family_name}
-                  onChange={handleInputChange}
-                  placeholder="姓を入力"
+                  autoFocus
+                  type="email"
+                  placeholder="メールアドレスを入力"
+                  name="email"
+                  value={formState.email}
                   required
+                  onChange={handleInputChange}
                 />
-              </FormControl>
+              </InputGroup>
+            </FormControl>
 
-              <FormControl mb={3}>
-                <FormLabel>名</FormLabel>
+            <Text fontSize="12px" color="gray" mb={2}>
+              パスワードは6文字以上で入力してください
+            </Text>
+
+            <FormControl mb={3}>
+              <FormLabel>パスワード</FormLabel>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <RiLockPasswordFill color="gray" />
+                </InputLeftElement>
                 <Input
-                  name="name"
-                  value={formState.name}
-                  onChange={handleInputChange}
-                  placeholder="名を入力"
+                  type="password"
+                  placeholder="パスワードを入力"
+                  name="password"
+                  value={formState.password}
                   required
+                  onChange={handleInputChange}
                 />
-              </FormControl>
+              </InputGroup>
+            </FormControl>
 
-              <FormControl mb={3}>
-                <FormLabel>支店</FormLabel>
+            <FormControl mb={3}>
+              <FormLabel>パスワード（確認）</FormLabel>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <RiLockPasswordFill color="gray" />
+                </InputLeftElement>
                 <Input
-                  name="branch"
-                  value={formState.branch}
-                  onChange={handleInputChange}
-                  placeholder="支店名を入力"
+                  type="password"
+                  placeholder="パスワードを再入力"
+                  name="passwordConf"
+                  value={formState.passwordConf}
                   required
-                />
-              </FormControl>
-
-              <FormControl mb={3}>
-                <FormLabel>チーム</FormLabel>
-                <Input
-                  name="team"
-                  value={formState.team}
                   onChange={handleInputChange}
-                  placeholder="チーム名を入力"
-                  required
                 />
-              </FormControl>
+              </InputGroup>
+            </FormControl>
 
-              {/* 既存のメールとパスワード入力フィールド */}
-              <FormControl mb={3}>
-                <FormLabel>メールアドレス</FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <FaUserCheck color="gray" />
-                  </InputLeftElement>
-                  <Input
-                    autoFocus
-                    type="email"
-                    placeholder="メールアドレスを入力"
-                    name="email"
-                    value={formState.email}
-                    required
-                    onChange={handleInputChange}
-                  />
-                </InputGroup>
-              </FormControl>
-
-              <Text fontSize="12px" color="gray" mb={2}>
-                パスワードは6文字以上で入力してください
-              </Text>
-
-              <FormControl mb={3}>
-                <FormLabel>パスワード</FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <RiLockPasswordFill color="gray" />
-                  </InputLeftElement>
-                  <Input
-                    type="password"
-                    placeholder="パスワードを入力"
-                    name="password"
-                    value={formState.password}
-                    required
-                    onChange={handleInputChange}
-                  />
-                </InputGroup>
-              </FormControl>
-
-              <FormControl mb={3}>
-                <FormLabel>パスワード（確認）</FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <RiLockPasswordFill color="gray" />
-                  </InputLeftElement>
-                  <Input
-                    type="password"
-                    placeholder="パスワードを再入力"
-                    name="passwordConf"
-                    value={formState.passwordConf}
-                    required
-                    onChange={handleInputChange}
-                  />
-                </InputGroup>
-              </FormControl>
-
-              <Box mt={4} mb={2} textAlign="center">
-                <Button
-                  isLoading={loading}
-                  loadingText="登録中..."
-                  spinnerPlacement="start"
-                  type="submit"
-                  colorScheme="green"
-                  width="100%"
-                  mb={2}
-                >
-                  登録する
-                </Button>
-                <Button
-                  colorScheme="gray"
-                  onClick={() => router.back()}
-                  width="100%"
-                >
-                  戻る
-                </Button>
-              </Box>
-            </form>
-          </CardBody>
-        </Card>
-      </Flex>
-    </>
+            <Box mt={4} mb={2} textAlign="center">
+              <Button
+                isLoading={loading}
+                loadingText="登録中..."
+                spinnerPlacement="start"
+                type="submit"
+                colorScheme="green"
+                width="100%"
+                mb={2}
+              >
+                登録する
+              </Button>
+              <Button
+                colorScheme="gray"
+                onClick={() => router.back()}
+                width="100%"
+              >
+                戻る
+              </Button>
+            </Box>
+          </form>
+        </CardBody>
+      </Card>
+    </Flex>
   );
 };
 

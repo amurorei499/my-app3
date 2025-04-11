@@ -6,22 +6,23 @@ import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
-  Card,
-  CardBody,
-  Divider,
   Flex,
   FormControl,
   FormLabel,
   Heading,
   Input,
-  Stack,
+  InputGroup,
+  InputRightElement,
   Tab,
   TabList,
   TabPanel,
   TabPanels,
   Tabs,
   Text,
+  Divider,
   useToast,
+  IconButton,
+  FormHelperText,
 } from "@chakra-ui/react";
 import {
   updateEmail,
@@ -29,6 +30,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider
 } from "firebase/auth";
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import { auth } from "@/app/utils/firebase";
 
 const AccountSettings = () => {
@@ -37,6 +39,11 @@ const AccountSettings = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
   const router = useRouter();
   const toast = useToast();
 
@@ -48,7 +55,7 @@ const AccountSettings = () => {
     } else if (user.email) {
       setNewEmail(user.email);
     }
-  }, []);
+  }, [router]);
 
   // 現在のユーザーを再認証
   const reauthenticate = async (password: string) => {
@@ -95,7 +102,7 @@ const AccountSettings = () => {
       console.error("メールアドレス更新エラー:", error);
       toast({
         title: "メールアドレス更新に失敗しました",
-        description: `${error}`,
+        description: error instanceof Error ? error.message : "エラーが発生しました",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -145,7 +152,7 @@ const AccountSettings = () => {
       console.error("パスワード更新エラー:", error);
       toast({
         title: "パスワード更新に失敗しました",
-        description: `${error}`,
+        description: error instanceof Error ? error.message : "エラーが発生しました",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -156,106 +163,202 @@ const AccountSettings = () => {
   };
 
   return (
-    <Flex justifyContent="center" mx="auto" p={5}>
-      <Card maxW="md" w="100%" boxShadow="lg">
-        <CardBody>
-          <Tabs isFitted variant="enclosed" colorScheme="teal" index={1}>
-            <TabList mb="1em">
-              <Tab onClick={() => router.push("/user/profile")}>プロフィール情報</Tab>
-              <Tab>アカウント設定</Tab>
-            </TabList>
-            <TabPanels>
-              <TabPanel></TabPanel>
-              <TabPanel>
-                <Heading size="md" mb={4} textAlign="center">
-                  アカウント設定
-                </Heading>
+    <Box minH="100vh" bg="#121212" py={8}>
+      <Box
+        maxW="800px"
+        mx="auto"
+        bg="#1A1A1A"
+        borderRadius="lg"
+        overflow="hidden"
+        boxShadow="xl"
+      >
+        <Tabs variant="enclosed" colorScheme="cyan">
+          <TabList bg="#232323">
+            <Tab
+              _selected={{ bg: "#1A1A1A", color: "cyan.400", borderBottomColor: "cyan.400" }}
+              color="gray.300"
+              px={8}
+              py={4}
+              onClick={() => router.push("/user/profile")}
+            >
+              プロフィール情報
+            </Tab>
+            <Tab
+              _selected={{ bg: "#1A1A1A", color: "cyan.400", borderBottomColor: "cyan.400" }}
+              color="gray.300"
+              px={8}
+              py={4}
+            >
+              アカウント設定
+            </Tab>
+          </TabList>
+
+          <TabPanels>
+            <TabPanel p={0}></TabPanel>
+            <TabPanel p={6}>
+              <Box>
+                <Text fontSize="xl" fontWeight="bold" color="white" mb={2}>アカウント情報</Text>
+                <Text fontSize="sm" color="gray.400" mb={6}>ログインに使用される情報です</Text>
+
+                <Divider mb={6} borderColor="gray.700" />
 
                 {/* メールアドレス変更セクション */}
-                <Box mb={6}>
-                  <Heading size="sm" mb={2}>
-                    メールアドレス変更
-                  </Heading>
-                  <FormControl mb={3}>
-                    <FormLabel>新しいメールアドレス</FormLabel>
-                    <Input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                    />
-                  </FormControl>
-                  <FormControl mb={3}>
-                    <FormLabel>現在のパスワード（確認用）</FormLabel>
-                    <Input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="現在のパスワードを入力"
-                    />
-                  </FormControl>
-                  <Button
-                    colorScheme="teal"
-                    isLoading={loading}
-                    onClick={handleEmailUpdate}
-                  >
-                    メールアドレスを更新
-                  </Button>
-                </Box>
-
-                <Divider my={4} />
+                <FormControl as={Flex} alignItems="center" py={4} borderBottom="1px solid" borderColor="gray.700">
+                  <FormLabel w="160px" color="gray.300" m={0}>メールアドレス</FormLabel>
+                  <Flex flex={1} direction="column">
+                    <InputGroup>
+                      <Input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        bg="#2D2D2D"
+                        border="none"
+                        color="white"
+                      />
+                    </InputGroup>
+                    <FormControl mt={3}>
+                      <FormLabel fontSize="sm" color="gray.400">現在のパスワード（確認用）</FormLabel>
+                      <InputGroup>
+                        <Input
+                          type={showPasswords.current ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="現在のパスワードを入力"
+                          bg="#2D2D2D"
+                          border="none"
+                          color="white"
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label="パスワードを表示/非表示"
+                            icon={showPasswords.current ? <ViewOffIcon /> : <ViewIcon />}
+                            variant="ghost"
+                            colorScheme="gray"
+                            size="sm"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+                    <Button
+                      colorScheme="cyan"
+                      mt={3}
+                      isLoading={loading}
+                      onClick={handleEmailUpdate}
+                    >
+                      メールアドレスを更新
+                    </Button>
+                  </Flex>
+                </FormControl>
 
                 {/* パスワード変更セクション */}
-                <Box>
-                  <Heading size="sm" mb={2}>
-                    パスワード変更
-                  </Heading>
-                  <FormControl mb={3}>
-                    <FormLabel>現在のパスワード</FormLabel>
-                    <Input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                    />
-                  </FormControl>
-                  <FormControl mb={3}>
-                    <FormLabel>新しいパスワード</FormLabel>
-                    <Input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                  </FormControl>
-                  <FormControl mb={3}>
-                    <FormLabel>新しいパスワード（確認）</FormLabel>
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </FormControl>
+                <FormControl as={Flex} alignItems="start" py={4} borderBottom="1px solid" borderColor="gray.700">
+                  <FormLabel w="160px" color="gray.300" m={0} pt={2}>パスワード</FormLabel>
+                  <Flex flex={1} direction="column">
+                    <Text color="white" mb={3}>********</Text>
+
+                    <Divider mb={3} borderColor="gray.700" />
+
+                    <FormControl mb={3}>
+                      <FormLabel fontSize="sm" color="gray.400">現在のパスワード</FormLabel>
+                      <InputGroup>
+                        <Input
+                          type={showPasswords.current ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          bg="#2D2D2D"
+                          border="none"
+                          color="white"
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label="パスワードを表示/非表示"
+                            icon={showPasswords.current ? <ViewOffIcon /> : <ViewIcon />}
+                            variant="ghost"
+                            colorScheme="gray"
+                            size="sm"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+
+                    <FormControl mb={3}>
+                      <FormLabel fontSize="sm" color="gray.400">新しいパスワード</FormLabel>
+                      <InputGroup>
+                        <Input
+                          type={showPasswords.new ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          bg="#2D2D2D"
+                          border="none"
+                          color="white"
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label="パスワードを表示/非表示"
+                            icon={showPasswords.new ? <ViewOffIcon /> : <ViewIcon />}
+                            variant="ghost"
+                            colorScheme="gray"
+                            size="sm"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                      <FormHelperText color="gray.500">6文字以上入力してください</FormHelperText>
+                    </FormControl>
+
+                    <FormControl mb={3}>
+                      <FormLabel fontSize="sm" color="gray.400">新しいパスワード（確認）</FormLabel>
+                      <InputGroup>
+                        <Input
+                          type={showPasswords.confirm ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          bg="#2D2D2D"
+                          border="none"
+                          color="white"
+                        />
+                        <InputRightElement>
+                          <IconButton
+                            aria-label="パスワードを表示/非表示"
+                            icon={showPasswords.confirm ? <ViewOffIcon /> : <ViewIcon />}
+                            variant="ghost"
+                            colorScheme="gray"
+                            size="sm"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                          />
+                        </InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+
+                    <Button
+                      colorScheme="cyan"
+                      isLoading={loading}
+                      onClick={handlePasswordUpdate}
+                    >
+                      パスワードを更新
+                    </Button>
+                  </Flex>
+                </FormControl>
+
+                <Box textAlign="center" mt={8}>
                   <Button
-                    colorScheme="teal"
-                    isLoading={loading}
-                    onClick={handlePasswordUpdate}
+                    onClick={() => router.push("/")}
+                    colorScheme="gray"
+                    size="md"
+                    px={8}
+                    variant="ghost"
                   >
-                    パスワードを更新
+                    戻る
                   </Button>
                 </Box>
-
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/")}
-                  mt={6}
-                  w="100%"
-                >
-                  メイン画面に戻る
-                </Button>
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
-        </CardBody>
-      </Card>
-    </Flex>
+              </Box>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </Box>
+    </Box>
   );
 };
 

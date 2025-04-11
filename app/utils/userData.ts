@@ -7,7 +7,7 @@ export type UserData = {
   name: string;
   branch: string;
   team: string;
-  role?: string;
+  role?: 'admin' | 'user'; // 権限フィールドを追加
   createdAt?: string;
   updatedAt?: string;
 };
