@@ -32,26 +32,57 @@ const DataSend: React.FC<DataSendProps> = ({
 
   // コンポーネントマウント時に端末情報と位置情報を取得
   useEffect(() => {
-    // ユーザーエージェントから端末情報を取得
-    const userAgent = navigator.userAgent;
-    setDeviceInfo(userAgent);
-
-    // 位置情報を取得（許可された場合）
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation(`[${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E]`);
-        },
-        (error) => {
-          console.error("位置情報の取得に失敗しました:", error);
+    const getLocation = () => {
+      return new Promise<string>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("位置情報サービスが利用できません"));
+          return;
         }
-      );
-    }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            resolve(`[${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E]`);
+          },
+          (error) => {
+            reject(error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          }
+        );
+      });
+    };
+
+    const initializeLocation = async () => {
+      try {
+        const location = await getLocation();
+        setLocation(location);
+      } catch (error) {
+        console.error("位置情報取得エラー:", error);
+        setLocation("[取得失敗]");
+      }
+    };
+
+    initializeLocation();
   }, []);
 
   // データ送信処理
   const handleSubmit = async () => {
+    // 位置情報チェックを追加
+    if (location === "[取得失敗]" || location === "[不明]") {
+      toast({
+        title: "位置情報の取得に失敗しました",
+        description: "位置情報の利用を許可してください",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
     if (!userData || !userData.email) {
       toast({
         title: "エラー",
