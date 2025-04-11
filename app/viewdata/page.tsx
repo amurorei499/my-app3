@@ -202,20 +202,23 @@ export default function ViewDataPage() {
     }
   };
 
-  // 日時フォーマット
+  // 日時フォーマット関数の修正
   const formatTimestamp = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat('eu-US', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(date);
+
+      // UTC時刻を直接取得
+      const utcMonth = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+      const utcDay = date.getUTCDate().toString().padStart(2, '0');
+      const utcHours = date.getUTCHours().toString().padStart(2, '0');
+      const utcMinutes = date.getUTCMinutes().toString().padStart(2, '0');
+
+      return `${utcMonth}/${utcDay} ${utcHours}:${utcMinutes}`;
     } catch (e) {
-      return dateString;
+      console.error("日時変換エラー:", e);
+      return "日時不明";
     }
-  };
+  }
 
   // ステータス色の取得
   const getStatusColor = (status: string) => {
