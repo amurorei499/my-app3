@@ -206,7 +206,7 @@ export default function ViewDataPage() {
   const formatTimestamp = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat('ja-JP', {
+      return new Intl.DateTimeFormat('eu-US', {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
