@@ -1,16 +1,26 @@
 // /app/utils/attendanceData.ts
-
-export type AttendanceData = {
+export interface AttendanceData {
   id?: string;
   email: string;
-  family_name: string;
+  family_name?: string;
   name: string;
   location: string;
+  status_primary: string;
+  status_secondary?: string;
+  reason?: string;
+  device?: string;
+  branch: string;
+  team: string;
   timestamp: string;
-  status_primary: string; // 主要カテゴリ
-  status_secondary?: string; // 詳細カテゴリ
-  reason?: string; // 欠勤・公休の理由
-  device: string;
-  branch?: string;  // 支店情報
-  team?: string;    // 班情報
-};
+
+  // 以下を追加
+  location_auth: 'success' | 'attention' | 'error';
+  metadata: {
+    distance: number;
+    branch_config: {
+      latitude: number;
+      longitude: number;
+      radius: number;
+    } | null;
+  };
+}

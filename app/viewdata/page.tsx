@@ -79,7 +79,7 @@ export default function ViewDataPage() {
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const attendanceRef = collection(db, "attendanceCreate");
+        const attendanceRef = collection(db, "attendance");
         const querySnapshot = await getDocs(attendanceRef);
 
         const branchSet = new Set<string>();
@@ -107,7 +107,7 @@ export default function ViewDataPage() {
     setError(null);
 
     try {
-      const attendanceRef = collection(db, "attendanceCreate");
+      const attendanceRef = collection(db, "attendance");
       let queryFilters = [];
 
       // フィルター条件の構築
@@ -228,6 +228,16 @@ export default function ViewDataPage() {
       case "欠勤": return "red";
       case "公休": return "purple";
       default: return "gray";
+    }
+  };
+
+  // 認証状態の色設定
+  const getAuthStatusColor = (status: string) => {
+    switch (status) {
+      case 'success': return 'green';
+      case 'attention': return 'yellow';
+      case 'error': return 'red';
+      default: return 'gray';
     }
   };
 
@@ -456,7 +466,7 @@ export default function ViewDataPage() {
                     px={3}
                     borderBottom="1px solid rgba(255,255,255,0.05)"
                   >
-                    場所
+                    認証状態
                   </Th>
                 </Tr>
               </Thead>
@@ -492,7 +502,6 @@ export default function ViewDataPage() {
                     >
                       <Flex align="center">
                         <BranchIcon branch={item.branch || "-"} />
-                        <Text ml={2} color="white" fontSize="sm">{item.branch || "-"}</Text>
                       </Flex>
                     </Td>
                     <Td
@@ -530,14 +539,21 @@ export default function ViewDataPage() {
                     </Td>
                     <Td
                       borderColor="transparent"
-                      color="gray.300"
                       py={1.5}
                       px={3}
-                      fontSize="xs"
                     >
-                      {item.location}
+                      <Badge
+                        colorScheme={getAuthStatusColor(item.location_auth)}
+                        fontSize="xs"
+                        px={2}
+                        py={0.5}
+                        borderRadius="sm"
+                      >
+                        {item.location_auth || "未確認"}
+                      </Badge>
                     </Td>
                   </Tr>
+
                 ))}
               </Tbody>
             </Table>
