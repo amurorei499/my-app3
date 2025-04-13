@@ -223,8 +223,8 @@ export default function ViewDataPage() {
   // ステータス色の取得
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "出勤": return "green";
-      case "退勤": return "blue";
+      case "出勤": return "blue";
+      case "退勤": return "green";
       case "欠勤": return "red";
       case "公休": return "purple";
       default: return "gray";
