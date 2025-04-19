@@ -49,8 +49,11 @@ export default function UserEditModal({
 
   // ユーザーデータをフォームにセット
   useEffect(() => {
-    if (user?.branch) {
-      setAvailableTeams(getTeamsByBranch(user.branch as BranchName));
+    if (user) {
+      setSelectedRole(user.role || "user");
+      if (user.branch) {
+        setAvailableTeams(getTeamsByBranch(user.branch as BranchName));
+      }
     }
   }, [user]);
 
@@ -67,12 +70,6 @@ export default function UserEditModal({
       setAvailableTeams([]);
     }
   }, [formData.branch]);
-
-  useEffect(() => {
-    if (user?.role) {
-      setSelectedRole(user.role);
-    }
-  }, [user]);
 
   // フォームの変更を処理
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

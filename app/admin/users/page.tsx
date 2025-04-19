@@ -90,6 +90,7 @@ export default function UserManagementPage() {
         return {
           id: doc.id,
           email: data.email || '',
+          family_name: data.family_name || '',
           name: data.name || '',
           role: data.role || 'user',
           branch: data.branch,
@@ -128,19 +129,19 @@ export default function UserManagementPage() {
   // ユーザー編集モーダルを開く
   const handleEditUser = (user: UserData) => {
     setSelectedUser(user);
-    setIsModalOpen(true);
+    onOpen();
   };
 
   // モーダルを閉じる
   const handleCloseModal = () => {
-    setIsModalOpen(false);
+    onClose();
     setSelectedUser(null);
   };
 
   // ユーザー情報更新後の処理
   const handleUserUpdated = () => {
     fetchUsers();
-    setIsModalOpen(false);
+    onClose();
     setSelectedUser(null);
     toast({
       title: "ユーザー情報を更新しました",
