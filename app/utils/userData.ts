@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 export interface UserData {
   id: string;
   email: string;
+  family_name?: string;
   name: string;
   role: "user" | "admin" | "manager" | "viewer";
   branch?: string;

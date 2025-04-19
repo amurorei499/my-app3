@@ -101,17 +101,24 @@ const DataSend: React.FC<DataSendProps> = ({
     const controller = new AbortController();
 
     try {
-      // タイムスタンプをサーバー側で生成するため、クライアント側では送信しない
+      // userDataから取得できるデータを展開
+      const { email, name, family_name, branch, team } = userData;
+
       const attendanceData = {
-        email: userData.email,
-        family_name: userData.family_name,
-        name: userData.name,
-        branch: userData.branch || "",
-        team: userData.team || "",
-        location: location,
+        // ユーザー基本情報
+        email,
+        name,
+        ...(family_name && { family_name }), // family_nameが存在する場合のみ追加
+        branch: branch || "",
+        team: team || "",
+
+        // 勤怠情報
         status_primary: status,
         status_secondary: secondaryStatus || "",
         reason: reason || "",
+
+        // システム情報
+        location,
         device: deviceInfo || "",
       };
 
