@@ -31,6 +31,12 @@ import {
   Stack,
   RadioGroup,
   Radio,
+  Container,
+  Select,
+  Spinner,
+  Alert,
+  AlertIcon,
+  VStack,
 } from "@chakra-ui/react";
 import { ViewIcon, ViewOffIcon, ChevronLeftIcon } from "@chakra-ui/icons";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -45,6 +51,12 @@ import {
   EmailAuthProvider
 } from "firebase/auth";
 import { BranchName, branches, getTeamsByBranch } from "@/app/utils/branchData";
+import { useBranches } from "@/app/hooks/useBranches";
+
+type Branch = {
+  name: string;
+  teams: string[];
+};
 
 type UserInfoItemProps = {
   label: string;
@@ -94,44 +106,73 @@ const ProfilePage = () => {
     confirm: false,
   });
   const [availableTeams, setAvailableTeams] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { branches, isLoading: isBranchesLoading, error: branchesError } = useBranches();
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const user = auth.currentUser;
-      if (!user?.email) {
-        router.push("/user/login");
-        return;
-      }
+      try {
+        const user = auth.currentUser;
+        if (!user?.email) {
+          router.push("/user/login");
+          return;
+        }
 
-      const userDoc = await getDoc(doc(db, "users", user.email));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setUserData({
-          email: user.email,
-          family_name: data.family_name || "",
-          name: data.name || "",
-          branch: data.branch || "",
-          team: data.team || "",
+        const userDoc = await getDoc(doc(db, "users", user.email));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserData({
+            email: user.email,
+            family_name: data.family_name || "",
+            name: data.name || "",
+            branch: data.branch || "",
+            team: data.team || "",
+          });
+        }
+      } catch (error) {
+        console.error("ユーザーデータの取得に失敗しました:", error);
+        toast({
+          title: "エラー",
+          description: "ユーザーデータの取得に失敗しました",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
         });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) fetchUserData();
-      else router.push("/user/login");
+      if (user) {
+        fetchUserData();
+      } else {
+        setIsLoading(false);
+        router.push("/user/login");
+      }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, toast]);
 
   useEffect(() => {
     if (userData.branch) {
       setAvailableTeams(getTeamsByBranch(userData.branch as BranchName));
     }
   }, [userData.branch]);
+
+  useEffect(() => {
+    if (userData.branch) {
+      const branch = branches.find(b => b.name === userData.branch);
+      setAvailableTeams(branch?.teams || []);
+    } else {
+      setAvailableTeams([]);
+    }
+  }, [userData.branch, branches]);
 
   const openEditModal = (field: EditField, value: string) => {
     setEditField(field);
@@ -200,6 +241,80 @@ const ProfilePage = () => {
       });
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    if (!user?.email) {
+      router.push("/user/login");
+      return;
+    }
+
+    if (!userData.family_name || !userData.name || !userData.branch || !userData.team) {
+      toast({
+        title: "入力エラー",
+        description: "すべての項目を入力してください",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const userRef = doc(db, "users", user.email);
+      await updateDoc(userRef, {
+        family_name: userData.family_name,
+        name: userData.name,
+        branch: userData.branch,
+        team: userData.team,
+        updated_at: new Date(),
+      });
+
+      toast({
+        title: "更新完了",
+        description: "プロフィールを更新しました",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      router.push("/");
+    } catch (error) {
+      console.error("Update error:", error);
+      toast({
+        title: "更新エラー",
+        description: "プロフィールの更新に失敗しました",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading || isBranchesLoading) {
+    return (
+      <Container maxW="container.md" py={10}>
+        <Flex justify="center" align="center" minH="50vh">
+          <Spinner size="xl" color="blue.500" />
+        </Flex>
+      </Container>
+    );
+  }
+
+  if (branchesError) {
+    return (
+      <Container maxW="container.md" py={10}>
+        <Alert status="error">
+          <AlertIcon />
+          {branchesError}
+        </Alert>
+      </Container>
+    );
+  }
 
   return (
     <Box minH="100vh" bg="#121212" color="white">
@@ -362,11 +477,18 @@ const ProfilePage = () => {
               ) : ["branch", "team"].includes(editField) ? (
                 <RadioGroup value={editValue} onChange={setEditValue}>
                   <Stack spacing={3}>
-                    {(editField === "branch" ? branches : availableTeams).map((item) => (
-                      <Radio key={item} value={item} colorScheme="cyan">
-                        {item}
-                      </Radio>
-                    ))}
+                    {(editField === "branch" ? branches : availableTeams).map((item) => {
+                      const itemValue = typeof item === 'string' ? item : item.name;
+                      return (
+                        <Radio 
+                          key={itemValue}
+                          value={itemValue}
+                          colorScheme="cyan"
+                        >
+                          {itemValue}
+                        </Radio>
+                      );
+                    })}
                   </Stack>
                 </RadioGroup>
               ) : (

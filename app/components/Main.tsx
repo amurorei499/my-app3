@@ -21,18 +21,33 @@ import {
   useDisclosure,
   useToast,
   Icon,
+  Spinner,
+  Center,
 } from "@chakra-ui/react";
 import { User } from "firebase/auth";
-import { UserData } from "../utils/userData";
-import AttendanceModal, { Category } from './AttendanceModal';
-import { Spinner } from "@chakra-ui/react";
+import { Timestamp } from "firebase/firestore";
 import { MdLogin, MdLogout, MdSick, MdHotel } from "react-icons/md";
+import AttendanceModal, { Category } from './AttendanceModal';
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/app/utils/firebase";
+
+interface UserData {
+  id: string;
+  email: string;
+  family_name: string;
+  name: string;
+  role: "user" | "admin" | "manager" | "viewer";
+  branch?: string;
+  team?: string;
+  created_at: Date | Timestamp;
+  updated_at: Date | Timestamp;
+}
 
 const Main = () => {
   // State variables
-  const [userData, setUserData] = useState<UserData[]>([]);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [currentCategory, setCurrentCategory] = useState<Category>('出勤');
   const cancelRef = useRef(null);
@@ -70,25 +85,37 @@ const Main = () => {
   }, []);
 
   /** Firestoreデータ取得 **/
-  const fetchDb = async (email: string) => {
-    setLoading(true);
+  const fetchDb = async (user: User) => {
     try {
-      const res = await fetch(`/api/records/read?email=${email}`);
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setUserData(data.data);
-      } else {
-        throw new Error(data.error || "Failed to fetch user data");
+      if (!user.email) {
+        console.error('メールアドレスが取得できません');
+        setUserData(null);
+        return;
       }
-    } catch (err: unknown) {
-      console.error("Error in fetchStudies:", err);
-      toast({
-        title: "データ取得に失敗しました",
-        status: "error",
-        duration: 2000,
-        isClosable: true,
-      });
+
+      const userDocRef = doc(db, 'users', user.email);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        setUserData({
+          id: user.email,
+          email: user.email,
+          family_name: data.family_name || '',
+          name: data.name || '',
+          role: data.role || 'user',
+          branch: data.branch,
+          team: data.team,
+          created_at: data.created_at || Timestamp.now(),
+          updated_at: data.updated_at || Timestamp.now()
+        });
+      } else {
+        console.error('ユーザーデータが見つかりません');
+        setUserData(null);
+      }
+    } catch (error) {
+      console.error('ユーザーデータの取得に失敗しました:', error);
+      setUserData(null);
     } finally {
       setLoading(false);
     }
@@ -97,10 +124,10 @@ const Main = () => {
   // 認証状態の監視
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
+      if (user?.email) {
         setUser(user);
-        setEmail(user.email || "");
-        fetchDb(user.email || "");
+        setEmail(user.email);
+        fetchDb(user);
       } else {
         router.push("/user/login");
       }
@@ -143,14 +170,15 @@ const Main = () => {
     );
   }
 
-  // 権限チェック関数を追加
-  const checkAdminPermission = (userData: UserData[]) => {
+  // 権限チェック関数を修正
+  const checkAdminPermission = (userData: UserData | null) => {
+    if (!userData) return false;
     // 特定UIDのユーザーに管理者権限を付与
     const adminUID = 'RwHDYu1wkPVrRUJ13kiMMFrB9E72';
-    return (
-      userData[0]?.role === 'admin' ||
-      auth.currentUser?.uid === adminUID
-    );
+    const isAdmin = userData.role === 'admin';
+    const isSpecialUser = auth.currentUser?.uid === adminUID;
+    
+    return isAdmin || isSpecialUser;
   };
 
   return (
@@ -173,16 +201,16 @@ const Main = () => {
       >
         <Box>
           <Text fontSize="xl" fontWeight="bold" color="cyan.400">
-            {userData[0]?.branch || "未設定支店"}
+            {userData?.branch || "未設定支店"}
           </Text>
           <Text fontSize="md" color="gray.400">
-            {userData[0]?.team || "未設定班"}
+            {userData?.team || "未設定班"}
           </Text>
         </Box>
 
         <Box textAlign="right">
           <Text fontSize="sm" color="gray.400">{currentDate}</Text>
-          <Text color="gray.400">{userData[0]?.name || "ゲスト"} さん</Text>
+          <Text color="gray.400">{userData?.name || "ゲスト"} さん</Text>
         </Box>
       </Flex>
 
@@ -306,17 +334,24 @@ const Main = () => {
               </Button>
               {checkAdminPermission(userData) && (
                 <Button
-                  onClick={() => router.push("/viewdata")}
+                  onClick={() => router.push("/admin")}
                   variant="ghost"
                   borderRadius="full"
-                  color="blue.300"
-                  _hover={{ bg: 'rgba(0, 123, 255, 0.1)' }}
+                  color="cyan.400"
+                  _hover={{ 
+                    bg: 'rgba(0, 255, 255, 0.1)',
+                    transform: "translateY(-2px)"
+                  }}
+                  _active={{
+                    transform: "scale(0.98)"
+                  }}
                   size="md"
                   flex="1"
                   maxW="160px"
                   mx={2}
+                  transition="all 0.2s"
                 >
-                  データ閲覧
+                  管理者ページ
                 </Button>
               )}
               <Button
@@ -338,12 +373,14 @@ const Main = () => {
       </Box>
 
       {/* モーダル */}
-      <AttendanceModal
-        isOpen={isOpen}
-        onClose={onClose}
-        primaryCategory={currentCategory}
-        userData={userData[0]}
-      />
+      {isOpen && userData && (
+        <AttendanceModal
+          isOpen={isOpen}
+          onClose={onClose}
+          primaryCategory={currentCategory}
+          userData={userData}
+        />
+      )}
 
       {/* ログアウトダイアログ */}
       <AlertDialog
@@ -377,6 +414,12 @@ const Main = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      {loading && (
+        <Center h="100vh">
+          <Spinner size="xl" color="blue.500" />
+        </Center>
+      )}
     </Box>
   );
 };

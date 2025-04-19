@@ -104,8 +104,8 @@ const DataSend: React.FC<DataSendProps> = ({
       // タイムスタンプをサーバー側で生成するため、クライアント側では送信しない
       const attendanceData = {
         email: userData.email,
-        family_name: userData.family_name || "",
-        name: userData.name || "",
+        family_name: userData.family_name,
+        name: userData.name,
         branch: userData.branch || "",
         team: userData.team || "",
         location: location,

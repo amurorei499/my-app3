@@ -23,6 +23,7 @@ import { ChevronUpIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
 import { AttendanceData } from "@/app/utils/attendanceData";
+import AdminLayout from "@/app/components/layouts/AdminLayout";
 
 // 支店アイコンコンポーネント - tomato.ggスタイル
 const BranchIcon = ({ branch }: { branch: string }) => {
@@ -133,10 +134,15 @@ export default function ViewDataPage() {
 
       const querySnapshot = await getDocs(finalQuery);
 
-      const data: AttendanceData[] = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as AttendanceData[];
+      const data: AttendanceData[] = querySnapshot.docs.map((doc) => {
+        const docData = doc.data();
+        return {
+          id: doc.id,
+          ...docData,
+          family_name: docData.family_name || "", // 姓が無い場合は空文字を設定
+          name: docData.name || "" // 名が無い場合は空文字を設定
+        };
+      }) as AttendanceData[];
 
       setAttendanceData(data);
       sortData(data);
@@ -242,7 +248,7 @@ export default function ViewDataPage() {
   };
 
   return (
-    <Box minH="100vh" bg="#121212" color="white">
+    <AdminLayout>
       <Container maxW="container.xl" py={4}>
         <Heading
           as="h1"
@@ -564,6 +570,6 @@ export default function ViewDataPage() {
           {displayData.length}件のデータを表示中（全{attendanceData.length}件）
         </Text>
       </Container>
-    </Box>
+    </AdminLayout>
   );
 }

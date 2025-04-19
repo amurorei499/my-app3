@@ -16,10 +16,16 @@ import {
   Text,
   Box,
   Flex,
-  Badge
+  Badge,
+  Button,
+  Select,
+  Input,
+  useToast
 } from '@chakra-ui/react';
 import DataSend from './DataSend';
 import { UserData } from "../utils/userData";
+import { doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../utils/firebase';
 
 // リテラル型の定義
 export type Category = '出勤' | '退勤' | '欠勤' | '公休';
@@ -57,12 +63,12 @@ const categoryColors = {
 };
 
 // モーダルの型定義
-type AttendanceModalProps = {
+interface AttendanceModalProps {
   isOpen: boolean;
   onClose: () => void;
   primaryCategory: Category;
   userData: UserData;
-};
+}
 
 const AttendanceModal: React.FC<AttendanceModalProps> = ({
   isOpen,
@@ -73,6 +79,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
   // 詳細カテゴリの状態管理
   const [secondaryCategory, setSecondaryCategory] = useState<string>('');
   const [reason, setReason] = useState<string>('');
+  const toast = useToast();
 
   // 現在の色スキーム
   const currentColor = categoryColors[primaryCategory];

@@ -17,13 +17,26 @@ import {
   HStack,
   Text,
   Badge,
+  Flex,
+  useDisclosure,
+  useColorModeValue,
 } from "@chakra-ui/react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
 import { UserData } from "@/app/utils/userData";
 import UserEditModal from "@/app/components/UserEditModal";
 import { useRouter } from "next/navigation";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import AdminLayout from "../../components/layouts/AdminLayout";
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  name: string;
+  created_at: { toDate: () => Date };
+  updated_at: { toDate: () => Date };
+}
 
 export default function UserManagementPage() {
   const router = useRouter();
@@ -35,6 +48,7 @@ export default function UserManagementPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const toast = useToast();
   const auth = getAuth();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   // マウント状態と権限チェック
   useEffect(() => {
@@ -71,10 +85,19 @@ export default function UserManagementPage() {
       const usersRef = collection(db, "users");
       const querySnapshot = await getDocs(usersRef);
 
-      const usersData: UserData[] = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      } as UserData));
+      const usersData: UserData[] = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          email: data.email || '',
+          name: data.name || '',
+          role: data.role || 'user',
+          branch: data.branch,
+          team: data.team,
+          created_at: data.created_at || Timestamp.now(),
+          updated_at: data.updated_at || Timestamp.now()
+        };
+      });
 
       setUsers(usersData);
     } catch (error) {
@@ -143,47 +166,79 @@ export default function UserManagementPage() {
     );
   };
 
-  return (
-    <Container maxW="container.xl" py={6}>
-      <Heading as="h1" size="xl" mb={6}>
-        ユーザー管理
-      </Heading>
-
-      {loading ? (
-        <Box textAlign="center" py={10}>
-          <Spinner size="xl" />
-          <Text mt={4}>ユーザーデータを読み込み中...</Text>
+  if (loading) {
+    return (
+      <AdminLayout>
+        <Box display="flex" justifyContent="center" alignItems="center" minH="60vh">
+          <Spinner size="xl" color="cyan.500" />
         </Box>
-      ) : (
-        <Box overflowX="auto">
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={8}>
+        <Text
+          fontSize="2xl"
+          fontWeight="bold"
+          mb={8}
+          color={useColorModeValue("gray.700", "white")}
+        >
+          ユーザー管理
+        </Text>
+        
+        <Box
+          bg={useColorModeValue("white", "gray.800")}
+          shadow="lg"
+          rounded="lg"
+          overflow="hidden"
+        >
           <Table variant="simple">
-            <Thead>
+            <Thead bg={useColorModeValue("gray.50", "gray.700")}>
               <Tr>
-                <Th>メールアドレス</Th>
-                <Th>氏名</Th>
-                <Th>支店</Th>
-                <Th>班</Th>
-                <Th>権限</Th>
-                <Th>操作</Th>
+                <Th color={useColorModeValue("gray.600", "gray.200")}>名前</Th>
+                <Th color={useColorModeValue("gray.600", "gray.200")}>メールアドレス</Th>
+                <Th color={useColorModeValue("gray.600", "gray.200")}>権限</Th>
+                <Th color={useColorModeValue("gray.600", "gray.200")}>作成日</Th>
+                <Th color={useColorModeValue("gray.600", "gray.200")}>更新日</Th>
+                <Th></Th>
               </Tr>
             </Thead>
             <Tbody>
               {users.map((user) => (
-                <Tr key={user.id}>
-                  <Td>{user.email}</Td>
-                  <Td>{user.family_name} {user.name}</Td>
-                  <Td>{user.branch || "-"}</Td>
-                  <Td>{user.team || "-"}</Td>
-                  <Td>
+                <Tr 
+                  key={user.id}
+                  _hover={{ bg: useColorModeValue("gray.50", "gray.700") }}
+                >
+                  <Td color={useColorModeValue("gray.700", "gray.300")}>{user.name}</Td>
+                  <Td color={useColorModeValue("gray.700", "gray.300")}>{user.email}</Td>
+                  <Td color={useColorModeValue("gray.700", "gray.300")}>
                     <HStack>
                       <RoleBadge role={user.role} />
                     </HStack>
                   </Td>
                   <Td>
+                    {user.created_at && (
+                      user.created_at instanceof Timestamp
+                        ? user.created_at.toDate().toLocaleString()
+                        : new Date(user.created_at).toLocaleString()
+                    )}
+                  </Td>
+                  <Td>
+                    {user.updated_at && (
+                      user.updated_at instanceof Timestamp
+                        ? user.updated_at.toDate().toLocaleString()
+                        : new Date(user.updated_at).toLocaleString()
+                    )}
+                  </Td>
+                  <Td>
                     <Button
-                      colorScheme="blue"
+                      colorScheme="cyan"
                       size="sm"
                       onClick={() => handleEditUser(user)}
+                      _hover={{ transform: "translateY(-2px)" }}
+                      transition="all 0.2s"
                     >
                       編集
                     </Button>
@@ -193,14 +248,16 @@ export default function UserManagementPage() {
             </Tbody>
           </Table>
         </Box>
-      )}
 
-      <UserEditModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        user={selectedUser}
-        onUserUpdated={handleUserUpdated}
-      />
-    </Container>
+        {selectedUser && (
+          <UserEditModal
+            isOpen={isOpen}
+            onClose={handleCloseModal}
+            user={selectedUser}
+            onUserUpdated={handleUserUpdated}
+          />
+        )}
+      </Box>
+    </AdminLayout>
   );
 }
