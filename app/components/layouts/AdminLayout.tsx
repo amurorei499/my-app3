@@ -2,7 +2,7 @@
 
 // app/components/layouts/AdminLayout.tsx
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import {
   Box,
   Flex,
@@ -16,6 +16,7 @@ import {
   DrawerContent,
   useDisclosure,
   Stack,
+  Spinner,
 } from "@chakra-ui/react";
 import {
   FiMenu,
@@ -26,7 +27,11 @@ import {
 } from "react-icons/fi";
 import { IconType } from "react-icons";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { auth } from "@/app/utils/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/app/utils/firebase";
 
 interface LinkItemProps {
   name: string;
@@ -42,12 +47,84 @@ const LinkItems: Array<LinkItemProps> = [
   { name: "勤怠管理", icon: FiHome, href: "/" },
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+interface AdminLayoutProps {
+  children: React.ReactNode;
+}
+
+const TEST_ADMIN_UID = "RwHDYu1wkPVrRUJ13kiMMFrB9E72";
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      try {
+        // テスト管理者UIDのチェック
+        if (user.uid === TEST_ADMIN_UID) {
+          setIsAuthorized(true);
+          setIsLoading(false);
+          return;
+        }
+
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userData = userDoc.data();
+
+        if (userData?.role === "admin") {
+          setIsAuthorized(true);
+        } else {
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+        router.push("/");
+      } finally {
+        setIsLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <Box
+        minH="100vh"
+        bg={useColorModeValue("gray.50", "gray.900")}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Flex direction="column" align="center" gap={4}>
+          <Spinner
+            thickness="4px"
+            speed="0.65s"
+            emptyColor="gray.200"
+            color="blue.500"
+            size="xl"
+          />
+          <Text
+            color={useColorModeValue("gray.600", "gray.400")}
+            fontSize="sm"
+          >
+            権限を確認中...
+          </Text>
+        </Flex>
+      </Box>
+    );
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
+
   return (
     <Box minH="100vh" bg={useColorModeValue("gray.100", "gray.900")}>
       <SidebarContent

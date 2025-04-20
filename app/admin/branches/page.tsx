@@ -18,6 +18,13 @@ import {
   Text,
   Spinner,
   useColorModeValue,
+  Stack,
+  Card,
+  CardBody,
+  VStack,
+  HStack,
+  Badge,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { AddIcon, EditIcon } from "@chakra-ui/icons";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
@@ -44,6 +51,7 @@ export default function BranchManagementPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
   const router = useRouter();
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   // 支店データの取得
   const fetchBranches = async () => {
@@ -87,11 +95,16 @@ export default function BranchManagementPage() {
     onOpen();
   };
 
+  const handleBranchUpdated = () => {
+    fetchBranches();
+    onClose();
+  };
+
   if (isLoading) {
     return (
       <AdminLayout>
-        <Flex minH="60vh" align="center" justify="center">
-          <Spinner size="xl" color="cyan.500" />
+        <Flex justify="center" align="center" minH="50vh">
+          <Spinner size="xl" color="blue.500" />
         </Flex>
       </AdminLayout>
     );
@@ -100,16 +113,25 @@ export default function BranchManagementPage() {
   return (
     <AdminLayout>
       <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }}>
-        <Flex justifyContent="space-between" alignItems="center" mb={6}>
+        <Flex 
+          direction={{ base: "column", md: "row" }}
+          justify="space-between" 
+          align={{ base: "stretch", md: "center" }} 
+          mb={6}
+          gap={4}
+        >
           <Box>
             <Text
-              fontSize="2xl"
+              fontSize={{ base: "xl", md: "2xl" }}
               fontWeight="bold"
               color={useColorModeValue("gray.700", "white")}
             >
               支店情報管理
             </Text>
-            <Text color={useColorModeValue("gray.600", "gray.400")}>
+            <Text 
+              color={useColorModeValue("gray.600", "gray.400")}
+              fontSize={{ base: "sm", md: "md" }}
+            >
               支店情報の確認・編集ができます
             </Text>
           </Box>
@@ -117,79 +139,152 @@ export default function BranchManagementPage() {
             leftIcon={<AddIcon />}
             colorScheme="cyan"
             onClick={handleAddBranch}
+            width={{ base: "full", md: "auto" }}
           >
             支店を追加
           </Button>
         </Flex>
 
-        <Box
-          bg={useColorModeValue("white", "gray.800")}
-          shadow="lg"
-          rounded="lg"
-          overflow="hidden"
-          borderWidth="1px"
-          borderColor={useColorModeValue("gray.200", "gray.700")}
-        >
-          <Table variant="simple">
-            <Thead bg={useColorModeValue("gray.50", "gray.700")}>
-              <Tr>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>支店名</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>所属班</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>位置情報</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>最終更新日</Th>
-                <Th width="100px" color={useColorModeValue("gray.600", "gray.200")}>操作</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {branches.map((branch) => (
-                <Tr 
-                  key={branch.id} 
-                  _hover={{ bg: useColorModeValue("gray.50", "gray.700") }}
-                >
-                  <Td color={useColorModeValue("gray.700", "gray.300")} fontWeight="medium">
-                    {branch.name}
-                  </Td>
-                  <Td color={useColorModeValue("gray.700", "gray.300")}>
-                    {branch.teams.join(", ")}
-                  </Td>
-                  <Td>
-                    {branch.latitude && branch.longitude ? (
-                      <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")}>
-                        {branch.latitude.toFixed(6)}, {branch.longitude.toFixed(6)}
-                        {branch.radius && ` (範囲: ${branch.radius}m)`}
+        {isMobile ? (
+          <Stack spacing={4}>
+            {branches.map((branch) => (
+              <Card 
+                key={branch.id}
+                bg={useColorModeValue("white", "gray.800")}
+                shadow="md"
+                rounded="lg"
+                borderWidth="1px"
+                borderColor={useColorModeValue("gray.200", "gray.700")}
+              >
+                <CardBody>
+                  <VStack align="stretch" spacing={3}>
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold" fontSize="lg">
+                        {branch.name}
                       </Text>
-                    ) : (
-                      <Text fontSize="sm" color={useColorModeValue("gray.400", "gray.500")}>
-                        未設定
+                      <IconButton
+                        aria-label="Edit branch"
+                        icon={<EditIcon />}
+                        size="sm"
+                        onClick={() => handleEditBranch(branch)}
+                        colorScheme="blue"
+                        variant="ghost"
+                      />
+                    </HStack>
+                    <Box>
+                      <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={1}>
+                        所属班
                       </Text>
+                      <Flex wrap="wrap" gap={2}>
+                        {branch.teams.map((team) => (
+                          <Badge 
+                            key={team}
+                            colorScheme="blue"
+                            variant="subtle"
+                          >
+                            {team}
+                          </Badge>
+                        ))}
+                      </Flex>
+                    </Box>
+                    {branch.latitude && branch.longitude && (
+                      <Box>
+                        <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")}>
+                          位置情報
+                        </Text>
+                        <Text fontSize="sm">
+                          緯度: {branch.latitude}, 経度: {branch.longitude}
+                        </Text>
+                        {branch.radius && (
+                          <Text fontSize="sm">
+                            許容範囲: {branch.radius}m
+                          </Text>
+                        )}
+                      </Box>
                     )}
-                  </Td>
-                  <Td color={useColorModeValue("gray.700", "gray.300")}>
-                    {branch.updated_at?.toLocaleDateString("ja-JP")}
-                  </Td>
-                  <Td>
-                    <IconButton
-                      aria-label="支店を編集"
-                      icon={<EditIcon />}
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="cyan"
-                      onClick={() => handleEditBranch(branch)}
-                    />
-                  </Td>
+                  </VStack>
+                </CardBody>
+              </Card>
+            ))}
+          </Stack>
+        ) : (
+          <Box
+            bg={useColorModeValue("white", "gray.800")}
+            shadow="lg"
+            rounded="lg"
+            overflow="hidden"
+            borderWidth="1px"
+            borderColor={useColorModeValue("gray.200", "gray.700")}
+          >
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  <Th>支店名</Th>
+                  <Th>所属班</Th>
+                  <Th>位置情報</Th>
+                  <Th>操作</Th>
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </Box>
-
-        <BranchEditModal
-          isOpen={isOpen}
-          onClose={onClose}
-          branch={selectedBranch}
-          onBranchUpdated={fetchBranches}
-        />
+              </Thead>
+              <Tbody>
+                {branches.map((branch) => (
+                  <Tr key={branch.id}>
+                    <Td fontWeight="medium">{branch.name}</Td>
+                    <Td>
+                      <Flex wrap="wrap" gap={2}>
+                        {branch.teams.map((team) => (
+                          <Badge 
+                            key={team}
+                            colorScheme="blue"
+                            variant="subtle"
+                          >
+                            {team}
+                          </Badge>
+                        ))}
+                      </Flex>
+                    </Td>
+                    <Td>
+                      {branch.latitude && branch.longitude ? (
+                        <VStack align="start" spacing={1}>
+                          <Text fontSize="sm">
+                            緯度: {branch.latitude}
+                          </Text>
+                          <Text fontSize="sm">
+                            経度: {branch.longitude}
+                          </Text>
+                          {branch.radius && (
+                            <Text fontSize="sm">
+                              許容範囲: {branch.radius}m
+                            </Text>
+                          )}
+                        </VStack>
+                      ) : (
+                        <Text color="gray.500">未設定</Text>
+                      )}
+                    </Td>
+                    <Td>
+                      <IconButton
+                        aria-label="Edit branch"
+                        icon={<EditIcon />}
+                        size="sm"
+                        onClick={() => handleEditBranch(branch)}
+                        colorScheme="blue"
+                        variant="ghost"
+                      />
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </Box>
+        )}
       </Box>
+
+      <BranchEditModal
+        isOpen={isOpen}
+        onClose={onClose}
+        branch={selectedBranch}
+        onBranchUpdated={handleBranchUpdated}
+      />
     </AdminLayout>
   );
 } 

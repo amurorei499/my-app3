@@ -73,8 +73,8 @@ export default function ViewDataPage() {
   // マスターデータ（フィルターオプション用）
   const [branches, setBranches] = useState<string[]>([]);
   const [teams, setTeams] = useState<string[]>([]);
-  const bgColor = useColorModeValue("gray.50", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const bgColor = useColorModeValue("gray.50", "gray.100");
+  const borderColor = useColorModeValue("gray.200", "white");
 
   // マスターデータ取得
   useEffect(() => {
@@ -260,21 +260,22 @@ export default function ViewDataPage() {
           勤怠データ確認
         </Heading>
 
-       {/* フィルターセクション - tomato.ggスタイル */}
+       {/* フィルターセクション */}
         <Box
           mb={4}
           p={3}
           borderRadius="md"
-          bg="#1A1A1A"
+          bg="white"
           borderWidth="1px"
-          borderColor="rgba(255,255,255,0.1)"
+          borderColor="gray.200"
+          shadow="sm"
         >
         {/* 支店フィルター */}
         <Flex wrap="wrap" gap={2} mb={4}>
-          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.300">支店:</Text>
+          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.700">支店:</Text>
           <Button
             size="sm"
-            colorScheme={!selectedBranch ? "cyan" : "gray"}
+            colorScheme={!selectedBranch ? "blue" : "gray"}
             variant={!selectedBranch ? "solid" : "outline"}
             onClick={() => setSelectedBranch(null)}
           >
@@ -285,7 +286,7 @@ export default function ViewDataPage() {
               key={branch}
               size="sm"
               leftIcon={<BranchIcon branch={branch} />}
-              colorScheme={selectedBranch === branch ? "cyan" : "gray"}
+              colorScheme={selectedBranch === branch ? "blue" : "gray"}
               onClick={() => setSelectedBranch(branch === selectedBranch ? null : branch)}
             >
               {branch}
@@ -295,7 +296,7 @@ export default function ViewDataPage() {
 
         {/* 班フィルター */}
         <Flex wrap="wrap" gap={2} mb={4}>
-          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.300">班:</Text>
+          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.700">班:</Text>
           <Button
             size="sm"
             colorScheme={!selectedTeam ? "blue" : "gray"}
@@ -316,12 +317,12 @@ export default function ViewDataPage() {
           ))}
         </Flex>
 
-        {/* ステータスフィルター - ティアスタイル */}
+        {/* ステータスフィルター */}
         <Flex wrap="wrap" gap={2}>
-          <Text fontWeight="bold" mr={4} alignSelf="center">ステータス:</Text>
+          <Text fontWeight="bold" mr={4} alignSelf="center" color="gray.700">ステータス:</Text>
           <Button
             size="sm"
-            colorScheme={!selectedStatus ? "green" : "gray"}
+            colorScheme={!selectedStatus ? "blue" : "gray"}
             onClick={() => setSelectedStatus(null)}
           >
             全て
@@ -330,7 +331,7 @@ export default function ViewDataPage() {
             <Button
               key={status}
               size="sm"
-              colorScheme={selectedStatus === status ? "green" : "gray"}
+              colorScheme={selectedStatus === status ? "blue" : "gray"}
               onClick={() => setSelectedStatus(status === selectedStatus ? null : status)}
             >
               {status}
@@ -357,21 +358,39 @@ export default function ViewDataPage() {
             overflowX="auto"
             borderWidth="1px"
             borderRadius="lg"
-            borderColor="rgba(255,255,255,0.1)"
-            boxShadow="0 4px 6px rgba(0,0,0,0.3)"
+            borderColor="gray.200"
+            boxShadow="sm"
+            bg="white"
+            sx={{
+              // スマホでの横スクロール時の操作性向上
+              WebkitOverflowScrolling: 'touch',
+              // スクロールバーをカスタマイズ
+              '&::-webkit-scrollbar': {
+                height: '6px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'gray.100',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'gray.300',
+                borderRadius: '3px',
+              }
+            }}
           >
-            <Table variant="unstyled" size="sm">
-              <Thead bg="#232323">
+            <Table variant="simple" size="sm">
+              <Thead bg="gray.50" position="sticky" top={0} zIndex={1}>
                 <Tr>
                   <Th
                     cursor="pointer"
                     onClick={() => handleSort("timestamp")}
-                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    _hover={{ bg: "gray.100" }}
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     <Flex align="center">
                       日時
@@ -383,12 +402,14 @@ export default function ViewDataPage() {
                   <Th
                     cursor="pointer"
                     onClick={() => handleSort("name")}
-                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    _hover={{ bg: "gray.100" }}
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     <Flex align="center">
                       氏名
@@ -400,12 +421,14 @@ export default function ViewDataPage() {
                   <Th
                     cursor="pointer"
                     onClick={() => handleSort("branch")}
-                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    _hover={{ bg: "gray.100" }}
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     <Flex align="center">
                       支店
@@ -417,12 +440,14 @@ export default function ViewDataPage() {
                   <Th
                     cursor="pointer"
                     onClick={() => handleSort("team")}
-                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    _hover={{ bg: "gray.100" }}
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     <Flex align="center">
                       班
@@ -434,12 +459,14 @@ export default function ViewDataPage() {
                   <Th
                     cursor="pointer"
                     onClick={() => handleSort("status_primary")}
-                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    _hover={{ bg: "gray.100" }}
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     <Flex align="center">
                       状態
@@ -451,12 +478,14 @@ export default function ViewDataPage() {
                   <Th
                     cursor="pointer"
                     onClick={() => handleSort("status_secondary")}
-                    _hover={{ bg: "rgba(255,255,255,0.05)" }}
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    _hover={{ bg: "gray.100" }}
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     <Flex align="center">
                       詳細
@@ -466,11 +495,13 @@ export default function ViewDataPage() {
                     </Flex>
                   </Th>
                   <Th
-                    color="gray.300"
-                    fontSize="xs"
-                    py={2}
-                    px={3}
-                    borderBottom="1px solid rgba(255,255,255,0.05)"
+                    color="gray.600"
+                    fontSize={{ base: "2xs", md: "xs" }}
+                    py={{ base: 1, md: 2 }}
+                    px={{ base: 2, md: 3 }}
+                    borderBottom="1px solid"
+                    borderColor="gray.200"
+                    whiteSpace="nowrap"
                   >
                     認証状態
                   </Th>
@@ -480,95 +511,108 @@ export default function ViewDataPage() {
                 {displayData.map((item, index) => (
                   <Tr
                     key={item.id}
-                    bg={index % 2 === 0 ? "#1A1A1A" : "#232323"}
-                    _hover={{ bg: "#2A2A2A" }}
+                    bg={index % 2 === 0 ? "gray.50" : "white"}
+                    _hover={{ bg: "gray.100" }}
                   >
                     <Td
-                      borderColor="transparent"
-                      color="white"
-                      py={1.5}
-                      px={3}
-                      fontSize="sm"
+                      borderColor="gray.200"
+                      color="gray.700"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
+                      fontSize={{ base: "2xs", md: "sm" }}
+                      whiteSpace="nowrap"
                     >
                       {formatTimestamp(item.timestamp)}
                     </Td>
                     <Td
-                      borderColor="transparent"
-                      color="white"
-                      py={1.5}
-                      px={3}
-                      fontSize="sm"
+                      borderColor="gray.200"
+                      color="gray.700"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
+                      fontSize={{ base: "2xs", md: "sm" }}
+                      whiteSpace="nowrap"
                     >
                       {item.family_name} {item.name}
                     </Td>
                     <Td
-                      borderColor="transparent"
-                      py={1.5}
-                      px={3}
+                      borderColor="gray.200"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
                     >
                       <Flex align="center">
-                        <BranchIcon branch={item.branch || "-"} />
+                        <Box
+                          w={{ base: "14px", md: "18px" }}
+                          h={{ base: "14px", md: "18px" }}
+                        >
+                          <BranchIcon branch={item.branch || "-"} />
+                        </Box>
                       </Flex>
                     </Td>
                     <Td
-                      borderColor="transparent"
-                      color="white"
-                      py={1.5}
-                      px={3}
-                      fontSize="sm"
+                      borderColor="gray.200"
+                      color="gray.700"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
+                      fontSize={{ base: "2xs", md: "sm" }}
+                      whiteSpace="nowrap"
                     >
                       {item.team || "-"}
                     </Td>
                     <Td
-                      borderColor="transparent"
-                      py={1.5}
-                      px={3}
+                      borderColor="gray.200"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
                     >
                       <Badge
                         colorScheme={getStatusColor(item.status_primary)}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
+                        fontSize={{ base: "3xs", md: "xs" }}
+                        px={{ base: 1, md: 2 }}
+                        py={{ base: 0.25, md: 0.5 }}
                         borderRadius="sm"
                       >
                         {item.status_primary}
                       </Badge>
                     </Td>
                     <Td
-                      borderColor="transparent"
-                      color="gray.300"
-                      py={1.5}
-                      px={3}
-                      fontSize="sm"
+                      borderColor="gray.200"
+                      color="gray.600"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
+                      fontSize={{ base: "2xs", md: "sm" }}
+                      whiteSpace="nowrap"
                     >
                       {item.status_secondary || "-"}
                     </Td>
                     <Td
-                      borderColor="transparent"
-                      py={1.5}
-                      px={3}
+                      borderColor="gray.200"
+                      py={{ base: 0.5, md: 1.5 }}
+                      px={{ base: 2, md: 3 }}
                     >
                       <Badge
                         colorScheme={getAuthStatusColor(item.location_auth)}
-                        fontSize="xs"
-                        px={2}
-                        py={0.5}
+                        fontSize={{ base: "3xs", md: "xs" }}
+                        px={{ base: 1, md: 2 }}
+                        py={{ base: 0.25, md: 0.5 }}
                         borderRadius="sm"
                       >
                         {item.location_auth || "未確認"}
                       </Badge>
                     </Td>
                   </Tr>
-
                 ))}
               </Tbody>
             </Table>
           </Box>
         )}
 
-        <Text mt={3} fontSize="xs" color="gray.400">
-          {displayData.length}件のデータを表示中（全{attendanceData.length}件）
-        </Text>
+        <Box mt={3}>
+          <Text fontSize={{ base: "2xs", md: "xs" }} color="gray.400">
+            {displayData.length}件のデータを表示中（全{attendanceData.length}件）
+          </Text>
+          <Text fontSize={{ base: "2xs", md: "xs" }} color="gray.400" mt={1}>
+            ※ 横にスクロールすると、より多くの情報を確認できます
+          </Text>
+        </Box>
       </Container>
     </AdminLayout>
   );

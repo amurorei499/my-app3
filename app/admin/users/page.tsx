@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import {
   Box,
-  Container,
+  Button,
+  Flex,
   Heading,
   Table,
   Thead,
@@ -11,228 +12,357 @@ import {
   Tr,
   Th,
   Td,
-  Button,
-  Spinner,
-  useToast,
-  HStack,
-  Text,
-  Badge,
-  Flex,
+  IconButton,
   useDisclosure,
+  useToast,
+  Text,
+  Spinner,
   useColorModeValue,
+  Stack,
+  Card,
+  CardBody,
+  VStack,
+  HStack,
+  Badge,
+  useBreakpointValue,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Select,
 } from "@chakra-ui/react";
-import { collection, getDocs, Timestamp } from "firebase/firestore";
+import { AddIcon, EditIcon, SearchIcon } from "@chakra-ui/icons";
+import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
-import { UserData } from "@/app/utils/userData";
-import UserEditModal from "@/app/components/UserEditModal";
 import { useRouter } from "next/navigation";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import AdminLayout from "../../components/layouts/AdminLayout";
+import UserEditModal from "@/app/components/UserEditModal";
+import AdminLayout from "@/app/components/layouts/AdminLayout";
 
 interface User {
   id: string;
   email: string;
-  role: string;
+  family_name?: string;
   name: string;
-  created_at: { toDate: () => Date };
-  updated_at: { toDate: () => Date };
+  role: "admin" | "manager" | "user" | "viewer";
+  branch?: string;
+  team?: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
 }
 
+type UserRole = "admin" | "manager" | "user" | "viewer";
+
 export default function UserManagementPage() {
-  const router = useRouter();
-  const [users, setUsers] = useState<UserData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
-  const toast = useToast();
-  const auth = getAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRole, setSelectedRole] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
+  const router = useRouter();
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
-  // マウント状態と権限チェック
   useEffect(() => {
-    setHasMounted(true);
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
-      try {
-        const idTokenResult = await user.getIdTokenResult(true);
-        setIsAdmin(!!idTokenResult.claims.admin);
-
-        if (idTokenResult.claims.admin) {
-          await fetchUsers();
-        } else {
-          router.push('/');
-        }
-      } catch (error) {
-        console.error("権限確認エラー:", error);
-        router.push('/');
-      }
-    });
-
-    return () => unsubscribe();
+    fetchUsers();
   }, []);
 
-  // ユーザーデータ取得
+  useEffect(() => {
+    let result = users;
+    
+    // 名前での検索
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(user => {
+        const fullName = `${user.family_name || ''} ${user.name || ''}`.toLowerCase();
+        const email = user.email.toLowerCase();
+        return fullName.includes(query) || email.includes(query);
+      });
+    }
+    
+    // 権限でのフィルタリング
+    if (selectedRole !== 'all') {
+      result = result.filter(user => user.role === selectedRole);
+    }
+    
+    setFilteredUsers(result);
+  }, [searchQuery, selectedRole, users]);
+
   const fetchUsers = async () => {
-    setLoading(true);
     try {
       const usersRef = collection(db, "users");
-      const querySnapshot = await getDocs(usersRef);
+      const q = query(usersRef, orderBy("name", "asc"));
+      const querySnapshot = await getDocs(q);
+      const userData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as User[];
 
-      const usersData: UserData[] = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          email: data.email || '',
-          family_name: data.family_name || '',
-          name: data.name || '',
-          role: data.role || 'user',
-          branch: data.branch,
-          team: data.team,
-          created_at: data.created_at || Timestamp.now(),
-          updated_at: data.updated_at || Timestamp.now()
-        };
+      // 権限の優先順位を定義
+      const rolePriority: Record<UserRole, number> = {
+        admin: 4,
+        manager: 3,
+        user: 2,
+        viewer: 1
+      };
+
+      // 権限の高い順にソート
+      const sortedUsers = userData.sort((a, b) => {
+        const roleDiff = (rolePriority[b.role] || 0) - (rolePriority[a.role] || 0);
+        if (roleDiff !== 0) return roleDiff;
+        // 権限が同じ場合は名前でソート
+        return `${a.family_name || ''}${a.name}`.localeCompare(`${b.family_name || ''}${b.name}`);
       });
 
-      setUsers(usersData);
+      setUsers(sortedUsers);
+      setFilteredUsers(sortedUsers);
     } catch (error) {
-      console.error("ユーザーデータ取得エラー:", error);
+      console.error("Error fetching users:", error);
       toast({
-        title: "ユーザーデータの取得に失敗しました",
+        title: "ユーザー情報の取得に失敗しました",
         status: "error",
         duration: 3000,
         isClosable: true,
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (!hasMounted) {
-    return null; // サーバーサイドでは何もレンダリングしない
-  }
-
-  if (!isAdmin) {
-    return (
-      <Box textAlign="center" py={10}>
-        <Text color="red.500">このページにアクセスする権限がありません</Text>
-      </Box>
-    );
-  }
-
-  // ユーザー編集モーダルを開く
-  const handleEditUser = (user: UserData) => {
+  const handleEditUser = (user: User) => {
     setSelectedUser(user);
     onOpen();
   };
 
-  // モーダルを閉じる
-  const handleCloseModal = () => {
-    onClose();
-    setSelectedUser(null);
-  };
-
-  // ユーザー情報更新後の処理
   const handleUserUpdated = () => {
     fetchUsers();
     onClose();
-    setSelectedUser(null);
-    toast({
-      title: "ユーザー情報を更新しました",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
   };
 
-  // 権限表示用バッジ
-  const RoleBadge = ({ role }: { role?: string }) => {
-    if (!role) return null;
-
-    const colorScheme =
-      role === "admin" ? "red" :
-      role === "manager" ? "green" :
-      role === "viewer" ? "blue" : "gray";
-
-    return (
-      <Badge colorScheme={colorScheme} mr={2}>
-        {role}
-      </Badge>
-    );
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <AdminLayout>
-        <Box display="flex" justifyContent="center" alignItems="center" minH="60vh">
-          <Spinner size="xl" color="cyan.500" />
-        </Box>
+        <Flex justify="center" align="center" minH="50vh">
+          <Spinner size="xl" color="blue.500" />
+        </Flex>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout>
-      <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={8}>
-        <Text
-          fontSize="2xl"
-          fontWeight="bold"
-          mb={8}
-          color={useColorModeValue("gray.700", "white")}
+      <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }}>
+        <Flex 
+          direction={{ base: "column", md: "row" }}
+          justify="space-between" 
+          align={{ base: "stretch", md: "center" }} 
+          mb={6}
+          gap={4}
         >
-          ユーザー管理
-        </Text>
-        
-        <Box
-          bg={useColorModeValue("white", "gray.800")}
-          shadow="lg"
-          rounded="lg"
-          overflow="hidden"
-        >
-          <Table variant="simple">
-            <Thead bg={useColorModeValue("gray.50", "gray.700")}>
-              <Tr>
-                <Th>氏名</Th>
-                <Th>メールアドレス</Th>
-                <Th>権限</Th>
-                <Th>操作</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {users.map((user) => (
-                <Tr key={user.id}>
-                  <Td>{`${user.family_name || ''} ${user.name || ''}`}</Td>
-                  <Td>{user.email}</Td>
-                  <Td>
-                    <RoleBadge role={user.role} />
-                  </Td>
-                  <Td>
-                    <Button
-                      size="sm"
-                      colorScheme="blue"
-                      onClick={() => handleEditUser(user)}
-                    >
-                      編集
-                    </Button>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </Box>
+          <Box>
+            <Text
+              fontSize={{ base: "xl", md: "2xl" }}
+              fontWeight="bold"
+              color={useColorModeValue("gray.700", "white")}
+            >
+              ユーザー管理
+            </Text>
+            <Text 
+              color={useColorModeValue("gray.600", "gray.400")}
+              fontSize={{ base: "sm", md: "md" }}
+            >
+              ユーザー情報の確認・編集ができます
+            </Text>
+          </Box>
+        </Flex>
 
-        <UserEditModal
-          isOpen={isOpen}
-          onClose={handleCloseModal}
-          user={selectedUser}
-          onUserUpdated={handleUserUpdated}
-        />
+        {/* 検索とフィルター */}
+        <Stack
+          direction={{ base: "column", md: "row" }}
+          spacing={4}
+          mb={6}
+          align={{ base: "stretch", md: "center" }}
+        >
+          <InputGroup maxW={{ base: "full", md: "md" }}>
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.400" />
+            </InputLeftElement>
+            <Input
+              placeholder="名前またはメールアドレスで検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              bg={useColorModeValue("white", "gray.800")}
+              borderColor={useColorModeValue("gray.200", "gray.700")}
+              _hover={{
+                borderColor: useColorModeValue("gray.300", "gray.600"),
+              }}
+              _focus={{
+                borderColor: "blue.500",
+                boxShadow: "0 0 0 1px blue.500",
+              }}
+            />
+          </InputGroup>
+          <Select
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+            maxW={{ base: "full", md: "xs" }}
+            bg={useColorModeValue("white", "gray.800")}
+            borderColor={useColorModeValue("gray.200", "gray.700")}
+            _hover={{
+              borderColor: useColorModeValue("gray.300", "gray.600"),
+            }}
+            _focus={{
+              borderColor: "blue.500",
+              boxShadow: "0 0 0 1px blue.500",
+            }}
+          >
+            <option value="all">すべての権限</option>
+            <option value="admin">管理者</option>
+            <option value="manager">マネージャー</option>
+            <option value="user">一般ユーザー</option>
+            <option value="viewer">閲覧者</option>
+          </Select>
+        </Stack>
+
+        {/* 検索結果のカウント */}
+        <Text mb={4} color={useColorModeValue("gray.600", "gray.400")}>
+          {filteredUsers.length}人のユーザーが見つかりました
+        </Text>
+
+        {isMobile ? (
+          <Stack spacing={4}>
+            {filteredUsers.map((user) => (
+              <Card 
+                key={user.id}
+                bg={useColorModeValue("white", "gray.800")}
+                shadow="md"
+                rounded="lg"
+                borderWidth="1px"
+                borderColor={useColorModeValue("gray.200", "gray.700")}
+              >
+                <CardBody>
+                  <VStack align="stretch" spacing={3}>
+                    <HStack justify="space-between">
+                      <Box>
+                        <Text fontWeight="bold" fontSize="lg">
+                          {user.family_name} {user.name}
+                        </Text>
+                        <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")}>
+                          {user.email}
+                        </Text>
+                      </Box>
+                      <IconButton
+                        aria-label="Edit user"
+                        icon={<EditIcon />}
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                        colorScheme="blue"
+                        variant="ghost"
+                      />
+                    </HStack>
+                    <Box>
+                      <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={1}>
+                        権限
+                      </Text>
+                      <Badge 
+                        colorScheme={
+                          user.role === "admin" ? "red" :
+                          user.role === "manager" ? "orange" :
+                          user.role === "viewer" ? "purple" : "blue"
+                        }
+                      >
+                        {user.role === "admin" ? "管理者" :
+                         user.role === "manager" ? "マネージャー" :
+                         user.role === "viewer" ? "閲覧者" : "一般ユーザー"}
+                      </Badge>
+                    </Box>
+                    {(user.branch || user.team) && (
+                      <Box>
+                        <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={1}>
+                          所属
+                        </Text>
+                        <Text fontSize="sm">
+                          {user.branch} {user.team && `- ${user.team}`}
+                        </Text>
+                      </Box>
+                    )}
+                  </VStack>
+                </CardBody>
+              </Card>
+            ))}
+          </Stack>
+        ) : (
+          <Box
+            bg={useColorModeValue("white", "gray.800")}
+            shadow="lg"
+            rounded="lg"
+            overflow="hidden"
+            borderWidth="1px"
+            borderColor={useColorModeValue("gray.200", "gray.700")}
+          >
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  <Th>名前</Th>
+                  <Th>メールアドレス</Th>
+                  <Th>権限</Th>
+                  <Th>所属</Th>
+                  <Th>操作</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {filteredUsers.map((user) => (
+                  <Tr key={user.id}>
+                    <Td>
+                      <Text fontWeight="medium">
+                        {user.family_name} {user.name}
+                      </Text>
+                    </Td>
+                    <Td>{user.email}</Td>
+                    <Td>
+                      <Badge 
+                        colorScheme={
+                          user.role === "admin" ? "red" :
+                          user.role === "manager" ? "orange" :
+                          user.role === "viewer" ? "purple" : "blue"
+                        }
+                      >
+                        {user.role === "admin" ? "管理者" :
+                         user.role === "manager" ? "マネージャー" :
+                         user.role === "viewer" ? "閲覧者" : "一般ユーザー"}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      {user.branch && (
+                        <Text>
+                          {user.branch} {user.team && `- ${user.team}`}
+                        </Text>
+                      )}
+                    </Td>
+                    <Td>
+                      <IconButton
+                        aria-label="Edit user"
+                        icon={<EditIcon />}
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                        colorScheme="blue"
+                        variant="ghost"
+                      />
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </Box>
+        )}
       </Box>
+
+      <UserEditModal
+        isOpen={isOpen}
+        onClose={onClose}
+        user={selectedUser}
+        onUserUpdated={handleUserUpdated}
+      />
     </AdminLayout>
   );
 }
