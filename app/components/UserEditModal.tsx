@@ -90,11 +90,13 @@ export default function UserEditModal({
       const userRef = doc(db, "users", user.id);
       await updateDoc(userRef, {
         role: selectedRole,
+        family_name: formData.family_name,
+        name: formData.name,
         updated_at: serverTimestamp()
       });
       
       toast({
-        title: "権限を更新しました",
+        title: "ユーザー情報を更新しました",
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -103,9 +105,9 @@ export default function UserEditModal({
       onUserUpdated();
       onClose();
     } catch (error) {
-      console.error("Error updating user role:", error);
+      console.error("Error updating user:", error);
       toast({
-        title: "権限の更新に失敗しました",
+        title: "更新に失敗しました",
         description: error instanceof Error ? error.message : "不明なエラーが発生しました",
         status: "error",
         duration: 5000,
@@ -129,31 +131,47 @@ export default function UserEditModal({
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent bg="white">
-        <ModalHeader>ユーザー権限の編集</ModalHeader>
+        <ModalHeader>ユーザー情報の編集</ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
-          <FormControl>
-            <FormLabel>ユーザー名</FormLabel>
-            <Input value={user?.name || ""} isReadOnly />
-          </FormControl>
-          <FormControl mt={4}>
-            <FormLabel>メールアドレス</FormLabel>
-            <Input value={user?.email || ""} isReadOnly />
-          </FormControl>
-          <FormControl mt={4}>
-            <FormLabel>権限</FormLabel>
-            <Select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-              isDisabled={isLoading}
-            >
-              {roleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
+          <VStack spacing={4} align="stretch">
+            <FormControl>
+              <FormLabel>姓</FormLabel>
+              <Input
+                name="family_name"
+                value={formData.family_name || ''}
+                onChange={handleChange}
+                placeholder="姓"
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>名</FormLabel>
+              <Input
+                name="name"
+                value={formData.name || ''}
+                onChange={handleChange}
+                placeholder="名"
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>メールアドレス</FormLabel>
+              <Input value={user?.email || ""} isReadOnly />
+            </FormControl>
+            <FormControl>
+              <FormLabel>権限</FormLabel>
+              <Select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+                isDisabled={isLoading}
+              >
+                {roleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+          </VStack>
         </ModalBody>
         <ModalFooter>
           <Button variant="ghost" mr={3} onClick={onClose} isDisabled={isLoading}>

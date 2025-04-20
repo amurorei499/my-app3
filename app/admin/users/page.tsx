@@ -43,7 +43,6 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const toast = useToast();
@@ -198,48 +197,25 @@ export default function UserManagementPage() {
           <Table variant="simple">
             <Thead bg={useColorModeValue("gray.50", "gray.700")}>
               <Tr>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>名前</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>メールアドレス</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>権限</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>作成日</Th>
-                <Th color={useColorModeValue("gray.600", "gray.200")}>更新日</Th>
-                <Th></Th>
+                <Th>氏名</Th>
+                <Th>メールアドレス</Th>
+                <Th>権限</Th>
+                <Th>操作</Th>
               </Tr>
             </Thead>
             <Tbody>
               {users.map((user) => (
-                <Tr 
-                  key={user.id}
-                  _hover={{ bg: useColorModeValue("gray.50", "gray.700") }}
-                >
-                  <Td color={useColorModeValue("gray.700", "gray.300")}>{user.name}</Td>
-                  <Td color={useColorModeValue("gray.700", "gray.300")}>{user.email}</Td>
-                  <Td color={useColorModeValue("gray.700", "gray.300")}>
-                    <HStack>
-                      <RoleBadge role={user.role} />
-                    </HStack>
-                  </Td>
+                <Tr key={user.id}>
+                  <Td>{`${user.family_name || ''} ${user.name || ''}`}</Td>
+                  <Td>{user.email}</Td>
                   <Td>
-                    {user.created_at && (
-                      user.created_at instanceof Timestamp
-                        ? user.created_at.toDate().toLocaleString()
-                        : new Date(user.created_at).toLocaleString()
-                    )}
-                  </Td>
-                  <Td>
-                    {user.updated_at && (
-                      user.updated_at instanceof Timestamp
-                        ? user.updated_at.toDate().toLocaleString()
-                        : new Date(user.updated_at).toLocaleString()
-                    )}
+                    <RoleBadge role={user.role} />
                   </Td>
                   <Td>
                     <Button
-                      colorScheme="cyan"
                       size="sm"
+                      colorScheme="blue"
                       onClick={() => handleEditUser(user)}
-                      _hover={{ transform: "translateY(-2px)" }}
-                      transition="all 0.2s"
                     >
                       編集
                     </Button>
@@ -250,14 +226,12 @@ export default function UserManagementPage() {
           </Table>
         </Box>
 
-        {selectedUser && (
-          <UserEditModal
-            isOpen={isOpen}
-            onClose={handleCloseModal}
-            user={selectedUser}
-            onUserUpdated={handleUserUpdated}
-          />
-        )}
+        <UserEditModal
+          isOpen={isOpen}
+          onClose={handleCloseModal}
+          user={selectedUser}
+          onUserUpdated={handleUserUpdated}
+        />
       </Box>
     </AdminLayout>
   );
