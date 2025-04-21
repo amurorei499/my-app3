@@ -87,20 +87,20 @@ const Main = () => {
   /** Firestoreデータ取得 **/
   const fetchDb = async (user: User) => {
     try {
-      if (!user.email) {
-        console.error('メールアドレスが取得できません');
+      if (!user.uid) {
+        console.error('UIDが取得できません');
         setUserData(null);
         return;
       }
 
-      const userDocRef = doc(db, 'users', user.email);
+      const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
       
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
         setUserData({
-          id: user.email,
-          email: user.email,
+          id: user.uid,
+          email: user.email || '',
           family_name: data.family_name || '',
           name: data.name || '',
           role: data.role || 'user',
@@ -201,16 +201,22 @@ const Main = () => {
       >
         <Box>
           <Text fontSize="xl" fontWeight="bold" color="cyan.400">
-            {userData?.branch || "未設定支店"}
+            {userData ? (userData.branch || "支店未設定") : "読み込み中..."}
           </Text>
           <Text fontSize="md" color="gray.400">
-            {userData?.team || "未設定班"}
+            {userData ? (userData.team || "班未設定") : "読み込み中..."}
           </Text>
         </Box>
 
         <Box textAlign="right">
           <Text fontSize="sm" color="gray.400">{currentDate}</Text>
-          <Text color="gray.400">{userData?.name || "ゲスト"} さん</Text>
+          <Text color="gray.400">
+            {userData ? (
+              `${userData.family_name} ${userData.name}さん`
+            ) : (
+              "読み込み中..."
+            )}
+          </Text>
         </Box>
       </Flex>
 
@@ -398,7 +404,7 @@ const Main = () => {
               本当にログアウトしますか？
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={cancelRef} variant="ghost" onClick={onLogoutAlertClose}>
+              <Button ref={cancelRef} bg="gray.700" variant="solid" onClick={onLogoutAlertClose}>
                 キャンセル
               </Button>
               <Button

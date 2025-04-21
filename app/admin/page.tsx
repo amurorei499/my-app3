@@ -17,8 +17,8 @@ import { FiUsers, FiMap, FiDatabase } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 import AdminLayout from "../components/layouts/AdminLayout";
 import { auth } from "../utils/firebase";
-
-const TEST_ADMIN_UID = "RwHDYu1wkPVrRUJ13kiMMFrB9E72";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "../utils/firebase";
 
 interface AdminCardProps {
   title: string;
@@ -68,14 +68,22 @@ export default function AdminDashboard() {
         return;
       }
 
-      // テスト用管理者UIDまたは管理者権限を持つユーザーのみアクセス可能
-      if (user.uid === TEST_ADMIN_UID) {
+      // Firestoreからユーザー情報を取得
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      console.log("userDoc", userDoc);
+      const userData = userDoc.data();
+
+      console.log("userData", userData);
+
+      // ユーザーが存在し、roleがadminの場合のみアクセス可能
+      if (userData && userData.role === "admin") {
+        console.log("ユーザーが存在します");
         setIsAuthorized(true);
       } else {
-        const idTokenResult = await user.getIdTokenResult();
-        setIsAuthorized(idTokenResult.claims.admin === true);
+        console.log("ユーザーが存在しません");
+        setIsAuthorized(false);
       }
-      
+      console.log("isAuthorized", isAuthorized);
       setIsLoading(false);
     });
 

@@ -48,7 +48,8 @@ import {
   updateEmail,
   updatePassword,
   reauthenticateWithCredential,
-  EmailAuthProvider
+  EmailAuthProvider,
+  sendEmailVerification
 } from "firebase/auth";
 import { BranchName, branches, getTeamsByBranch } from "@/app/utils/branchData";
 import { useBranches } from "@/app/hooks/useBranches";
@@ -117,16 +118,16 @@ const ProfilePage = () => {
     const fetchUserData = async () => {
       try {
         const user = auth.currentUser;
-        if (!user?.email) {
+        if (!user?.uid) {
           router.push("/user/login");
           return;
         }
 
-        const userDoc = await getDoc(doc(db, "users", user.email));
+        const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
           setUserData({
-            email: user.email,
+            email: user.email || "",
             family_name: data.family_name || "",
             name: data.name || "",
             branch: data.branch || "",
@@ -183,9 +184,48 @@ const ProfilePage = () => {
   const handleProfileUpdate = async () => {
     try {
       const user = auth.currentUser;
-      if (!user?.email) return;
+      if (!user?.uid) return;
 
-      await updateDoc(doc(db, "users", user.email), {
+      if (editField === "email") {
+        if (!currentPassword) {
+          toast({
+            title: "パスワードが必要です",
+            description: "メールアドレスを変更するには現在のパスワードが必要です",
+            status: "error",
+            duration: 3000,
+          });
+          return;
+        }
+
+        // メールアドレス変更前の再認証
+        const credential = EmailAuthProvider.credential(user.email || "", currentPassword);
+        await reauthenticateWithCredential(user, credential);
+
+        // Firestoreの更新を先に行う
+        await updateDoc(doc(db, "users", user.uid), {
+          email: editValue,
+        });
+
+        // メールアドレスの更新
+        await updateEmail(user, editValue);
+
+        setUserData((prev) => ({
+          ...prev,
+          email: editValue,
+        }));
+
+        toast({
+          title: "メールアドレスを更新しました",
+          status: "success",
+          duration: 3000,
+        });
+
+        onClose();
+        return;
+      }
+
+      // メール以外の項目の更新
+      await updateDoc(doc(db, "users", user.uid), {
         [editField]: editValue,
         ...(editField === "branch" && { team: "" }),
       });
@@ -201,10 +241,29 @@ const ProfilePage = () => {
         status: "success",
         duration: 3000,
       });
+
+      // パスワードをリセット
+      setCurrentPassword("");
       onClose();
     } catch (error) {
+      console.error("Update error:", error);
+      let errorMessage = "エラーが発生しました";
+      if (error instanceof Error) {
+        if (error.message.includes("auth/requires-recent-login")) {
+          errorMessage = "再度ログインが必要です";
+        } else if (error.message.includes("auth/email-already-in-use")) {
+          errorMessage = "このメールアドレスは既に使用されています";
+        } else if (error.message.includes("auth/invalid-email")) {
+          errorMessage = "無効なメールアドレスです";
+        } else if (error.message.includes("auth/operation-not-allowed")) {
+          errorMessage = "メールアドレスの変更が許可されていません。管理者に連絡してください。";
+        } else {
+          errorMessage = error.message;
+        }
+      }
       toast({
         title: "更新失敗",
+        description: errorMessage,
         status: "error",
         duration: 3000,
       });
@@ -245,7 +304,7 @@ const ProfilePage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = auth.currentUser;
-    if (!user?.email) {
+    if (!user?.uid) {
       router.push("/user/login");
       return;
     }
@@ -263,7 +322,7 @@ const ProfilePage = () => {
 
     setIsSaving(true);
     try {
-      const userRef = doc(db, "users", user.email);
+      const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
         family_name: userData.family_name,
         name: userData.name,
@@ -332,11 +391,12 @@ const ProfilePage = () => {
           colorScheme="cyan"
           variant="ghost"
           onClick={() => router.push("/")}
+          display={{ base: "flex", md: "none" }}
         >
-          メインページに戻る
+          戻る
         </Button>
-        <Heading size="md" color="cyan.400">プロフィール設定</Heading>
-        <Box w="136px" /> {/* スペーサー */}
+        <Heading size="md" color="cyan.400" textAlign="center" flex="1">プロフィール設定</Heading>
+        <Box w={{ base: "60px", md: "auto" }} />
       </Flex>
 
       <Box maxW="800px" mx="auto" p={6}>
@@ -469,6 +529,39 @@ const ProfilePage = () => {
                           icon={showPasswords.confirm ? <ViewOffIcon /> : <ViewIcon />}
                           variant="ghost"
                           onClick={() => setShowPasswords(p => ({ ...p, confirm: !p.confirm }))}
+                        />
+                      </InputRightElement>
+                    </InputGroup>
+                  </FormControl>
+                </Stack>
+              ) : editField === "email" ? (
+                <Stack spacing={4}>
+                  <FormControl>
+                    <FormLabel>新しいメールアドレス</FormLabel>
+                    <Input
+                      type="email"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      bg="#2D2D2D"
+                      border="none"
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>現在のパスワード（確認用）</FormLabel>
+                    <InputGroup>
+                      <Input
+                        type={showPasswords.current ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        bg="#2D2D2D"
+                        border="none"
+                      />
+                      <InputRightElement>
+                        <IconButton
+                          aria-label="表示切替"
+                          icon={showPasswords.current ? <ViewOffIcon /> : <ViewIcon />}
+                          variant="ghost"
+                          onClick={() => setShowPasswords(p => ({ ...p, current: !p.current }))}
                         />
                       </InputRightElement>
                     </InputGroup>

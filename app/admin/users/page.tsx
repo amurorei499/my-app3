@@ -271,9 +271,9 @@ export default function UserManagementPage() {
                           user.role === "viewer" ? "purple" : "blue"
                         }
                       >
-                        {user.role === "admin" ? "管理者" :
-                         user.role === "manager" ? "マネージャー" :
-                         user.role === "viewer" ? "閲覧者" : "一般ユーザー"}
+                        {user.role === "admin" ? "ADMIN" :
+                         user.role === "manager" ? "MANAGER" :
+                         user.role === "viewer" ? "VIEWER" : "USER"}
                       </Badge>
                     </Box>
                     {(user.branch || user.team) && (
@@ -327,9 +327,9 @@ export default function UserManagementPage() {
                           user.role === "viewer" ? "purple" : "blue"
                         }
                       >
-                        {user.role === "admin" ? "管理者" :
-                         user.role === "manager" ? "マネージャー" :
-                         user.role === "viewer" ? "閲覧者" : "一般ユーザー"}
+                        {user.role === "admin" ? "ADMIN" :
+                         user.role === "manager" ? "MANAGER" :
+                         user.role === "viewer" ? "VIEWER" : "USER"}
                       </Badge>
                     </Td>
                     <Td>

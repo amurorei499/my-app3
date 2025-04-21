@@ -24,6 +24,7 @@ import { UserData } from "@/app/utils/userData";
 import { BranchName, branches, getTeamsByBranch } from "@/app/utils/branchData";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
+import { auth } from "@/app/utils/firebase";
 
 interface User {
   id: string;
@@ -113,6 +114,7 @@ export default function UserEditModal({
     
     setIsLoading(true);
     try {
+      // Firestoreの更新
       const userRef = doc(db, "users", user.id);
       await updateDoc(userRef, {
         role: selectedRole,
@@ -122,6 +124,25 @@ export default function UserEditModal({
         team: formData.team,
         updated_at: serverTimestamp()
       });
+
+      // カスタムクレームの更新
+      const response = await fetch('/admin/updateUser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          userData: {
+            role: selectedRole
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('カスタムクレームの更新に失敗しました');
+      }
       
       toast({
         title: "ユーザー情報を更新しました",
