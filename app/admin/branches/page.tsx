@@ -52,6 +52,10 @@ export default function BranchManagementPage() {
   const toast = useToast();
   const router = useRouter();
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const textColor = useColorModeValue("gray.700", "white");
+  const subTextColor = useColorModeValue("gray.600", "gray.400");
 
   // 支店データの取得
   const fetchBranches = async () => {
@@ -124,12 +128,12 @@ export default function BranchManagementPage() {
             <Text
               fontSize={{ base: "xl", md: "2xl" }}
               fontWeight="bold"
-              color={useColorModeValue("gray.700", "white")}
+              color={textColor}
             >
               支店情報管理
             </Text>
             <Text 
-              color={useColorModeValue("gray.600", "gray.400")}
+              color={subTextColor}
               fontSize={{ base: "sm", md: "md" }}
             >
               支店情報の確認・編集ができます
@@ -150,11 +154,11 @@ export default function BranchManagementPage() {
             {branches.map((branch) => (
               <Card 
                 key={branch.id}
-                bg={useColorModeValue("white", "gray.800")}
+                bg={bgColor}
                 shadow="md"
                 rounded="lg"
                 borderWidth="1px"
-                borderColor={useColorModeValue("gray.200", "gray.700")}
+                borderColor={borderColor}
               >
                 <CardBody>
                   <VStack align="stretch" spacing={3}>
@@ -172,7 +176,7 @@ export default function BranchManagementPage() {
                       />
                     </HStack>
                     <Box>
-                      <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={1}>
+                      <Text fontSize="sm" color={subTextColor} mb={1}>
                         所属班
                       </Text>
                       <Flex wrap="wrap" gap={2}>
@@ -189,7 +193,7 @@ export default function BranchManagementPage() {
                     </Box>
                     {branch.latitude && branch.longitude && (
                       <Box>
-                        <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")}>
+                        <Text fontSize="sm" color={subTextColor}>
                           位置情報
                         </Text>
                         <Text fontSize="sm">
@@ -209,12 +213,12 @@ export default function BranchManagementPage() {
           </Stack>
         ) : (
           <Box
-            bg={useColorModeValue("white", "gray.800")}
+            bg={bgColor}
             shadow="lg"
             rounded="lg"
             overflow="hidden"
             borderWidth="1px"
-            borderColor={useColorModeValue("gray.200", "gray.700")}
+            borderColor={borderColor}
           >
             <Table variant="simple">
               <Thead>
@@ -258,7 +262,9 @@ export default function BranchManagementPage() {
                           )}
                         </VStack>
                       ) : (
-                        <Text color="gray.500">未設定</Text>
+                        <Text fontSize="sm" color={subTextColor}>
+                          未設定
+                        </Text>
                       )}
                     </Td>
                     <Td>

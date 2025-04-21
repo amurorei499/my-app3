@@ -6,7 +6,7 @@ import { z } from "zod";
 const UpdateUserSchema = z.object({
   userId: z.string(),
   userData: z.object({
-    role: z.enum(["admin", "user"]),
+    role: z.enum(["admin", "manager", "user", "viewer"]),
   }),
 });
 
@@ -30,11 +30,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 管理者権限のチェック
-    const adminDoc = await db.collection("users").doc(decodedToken.uid).get();
-    const adminData = adminDoc.data();
-    
-    if (!adminData || adminData.role !== "admin") {
+    // カスタムクレームで管理者権限をチェック
+    if (!decodedToken.role || decodedToken.role !== "admin") {
       return NextResponse.json(
         { error: "管理者権限が必要です" },
         { status: 403 }
@@ -44,18 +41,74 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = UpdateUserSchema.parse(body);
 
-    // カスタムクレームの更新
-    await auth.setCustomUserClaims(validatedData.userId, {
-      role: validatedData.userData.role,
+    // Firestoreからユーザー情報を取得
+    const userDoc = await db.collection("users").doc(validatedData.userId).get();
+    if (!userDoc.exists) {
+      return NextResponse.json(
+        { error: "ユーザーが見つかりません" },
+        { status: 404 }
+      );
+    }
+
+    const userData = userDoc.data();
+    console.log("更新前のユーザー情報:", {
+      userId: validatedData.userId,
+      email: userData?.email,
+      role: userData?.role
     });
 
-    // Firestoreの更新
-    await db.collection("users").doc(validatedData.userId).update({
-      role: validatedData.userData.role,
-      updated_at: new Date(),
-    });
+    try {
+      // カスタムクレームの更新
+      const customClaims = {
+        role: validatedData.userData.role,
+        updated_at: new Date().toISOString()
+      };
 
-    return NextResponse.json({ message: "ユーザー情報を更新しました" });
+      // Firebase Admin SDKを使用してカスタムクレームを設定
+      await auth.setCustomUserClaims(validatedData.userId, customClaims);
+
+      // Firestoreの更新
+      await db.collection("users").doc(validatedData.userId).update({
+        role: validatedData.userData.role,
+        updated_at: new Date(),
+      });
+
+      // 更新後のユーザー情報を取得
+      const updatedUserRecord = await auth.getUser(validatedData.userId);
+      console.log("更新後のカスタムクレーム:", {
+        userId: validatedData.userId,
+        email: updatedUserRecord.email,
+        customClaims: updatedUserRecord.customClaims
+      });
+
+      // 更新されたユーザーの新しいカスタムトークンを生成
+      const newCustomToken = await auth.createCustomToken(validatedData.userId, {
+        ...customClaims,
+        email: updatedUserRecord.email,
+        email_verified: updatedUserRecord.emailVerified,
+      });
+
+      // 更新されたユーザーの新しいIDトークンを強制的に無効化
+      await auth.revokeRefreshTokens(validatedData.userId);
+
+      return NextResponse.json({ 
+        success: true,
+        message: "ユーザー情報を更新しました",
+        user: {
+          id: validatedData.userId,
+          email: updatedUserRecord.email,
+          role: validatedData.userData.role,
+          customClaims: updatedUserRecord.customClaims,
+          token: newCustomToken
+        }
+      });
+    } catch (error) {
+      console.error("カスタムクレームの更新に失敗:", error);
+      return NextResponse.json(
+        { error: "カスタムクレームの更新に失敗しました" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("Error updating user:", error);
     if (error instanceof z.ZodError) {

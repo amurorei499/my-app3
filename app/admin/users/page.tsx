@@ -63,6 +63,13 @@ export default function UserManagementPage() {
   const router = useRouter();
   const isMobile = useBreakpointValue({ base: true, md: false });
 
+  // カラーモードの値を事前に定義
+  const textColor = useColorModeValue("gray.700", "white");
+  const subTextColor = useColorModeValue("gray.600", "gray.400");
+  const bgColor = useColorModeValue("white", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.700");
+  const hoverBorderColor = useColorModeValue("gray.300", "gray.600");
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -163,12 +170,12 @@ export default function UserManagementPage() {
             <Text
               fontSize={{ base: "xl", md: "2xl" }}
               fontWeight="bold"
-              color={useColorModeValue("gray.700", "white")}
+              color={textColor}
             >
               ユーザー管理
             </Text>
             <Text 
-              color={useColorModeValue("gray.600", "gray.400")}
+              color={subTextColor}
               fontSize={{ base: "sm", md: "md" }}
             >
               ユーザー情報の確認・編集ができます
@@ -191,10 +198,10 @@ export default function UserManagementPage() {
               placeholder="名前またはメールアドレスで検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              bg={useColorModeValue("white", "gray.800")}
-              borderColor={useColorModeValue("gray.200", "gray.700")}
+              bg={bgColor}
+              borderColor={borderColor}
               _hover={{
-                borderColor: useColorModeValue("gray.300", "gray.600"),
+                borderColor: hoverBorderColor,
               }}
               _focus={{
                 borderColor: "blue.500",
@@ -206,10 +213,10 @@ export default function UserManagementPage() {
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
             maxW={{ base: "full", md: "xs" }}
-            bg={useColorModeValue("white", "gray.800")}
-            borderColor={useColorModeValue("gray.200", "gray.700")}
+            bg={bgColor}
+            borderColor={borderColor}
             _hover={{
-              borderColor: useColorModeValue("gray.300", "gray.600"),
+              borderColor: hoverBorderColor,
             }}
             _focus={{
               borderColor: "blue.500",
@@ -225,7 +232,7 @@ export default function UserManagementPage() {
         </Stack>
 
         {/* 検索結果のカウント */}
-        <Text mb={4} color={useColorModeValue("gray.600", "gray.400")}>
+        <Text mb={4} color={subTextColor}>
           {filteredUsers.length}人のユーザーが見つかりました
         </Text>
 
@@ -234,11 +241,11 @@ export default function UserManagementPage() {
             {filteredUsers.map((user) => (
               <Card 
                 key={user.id}
-                bg={useColorModeValue("white", "gray.800")}
+                bg={bgColor}
                 shadow="md"
                 rounded="lg"
                 borderWidth="1px"
-                borderColor={useColorModeValue("gray.200", "gray.700")}
+                borderColor={borderColor}
               >
                 <CardBody>
                   <VStack align="stretch" spacing={3}>
@@ -247,7 +254,7 @@ export default function UserManagementPage() {
                         <Text fontWeight="bold" fontSize="lg">
                           {user.family_name} {user.name}
                         </Text>
-                        <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")}>
+                        <Text fontSize="sm" color={subTextColor}>
                           {user.email}
                         </Text>
                       </Box>
@@ -261,7 +268,7 @@ export default function UserManagementPage() {
                       />
                     </HStack>
                     <Box>
-                      <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={1}>
+                      <Text fontSize="sm" color={subTextColor} mb={1}>
                         権限
                       </Text>
                       <Badge 
@@ -278,7 +285,7 @@ export default function UserManagementPage() {
                     </Box>
                     {(user.branch || user.team) && (
                       <Box>
-                        <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={1}>
+                        <Text fontSize="sm" color={subTextColor} mb={1}>
                           所属
                         </Text>
                         <Text fontSize="sm">
@@ -293,12 +300,12 @@ export default function UserManagementPage() {
           </Stack>
         ) : (
           <Box
-            bg={useColorModeValue("white", "gray.800")}
+            bg={bgColor}
             shadow="lg"
             rounded="lg"
             overflow="hidden"
             borderWidth="1px"
-            borderColor={useColorModeValue("gray.200", "gray.700")}
+            borderColor={borderColor}
           >
             <Table variant="simple">
               <Thead>

@@ -22,7 +22,7 @@ import {
 } from "@chakra-ui/react";
 import { UserData } from "@/app/utils/userData";
 import { BranchName, branches as defaultBranches, getTeamsByBranch } from "@/app/utils/branchData";
-import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, Timestamp, getDoc } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
 import { auth } from "@/app/utils/firebase";
 
@@ -121,21 +121,32 @@ export default function UserEditModal({
         throw new Error('認証されていません');
       }
 
+      // 現在のユーザーのカスタムクレームを確認
       const idToken = await currentUser.getIdToken(true);
+      const decodedToken = await auth.currentUser?.getIdTokenResult();
+      console.log("現在のユーザーのカスタムクレーム:", {
+        email: currentUser.email,
+        customClaims: decodedToken?.claims
+      });
+
       if (!idToken) {
         throw new Error('認証トークンの取得に失敗しました');
       }
 
       // Firestoreの更新
       const userRef = doc(db, "users", user.id);
-      await updateDoc(userRef, {
+      const updateData: any = {
         role: selectedRole,
-        family_name: formData.family_name,
-        name: formData.name,
-        branch: formData.branch,
-        team: formData.team,
         updated_at: serverTimestamp()
-      });
+      };
+
+      // 空でない値のみを追加
+      if (formData.family_name) updateData.family_name = formData.family_name;
+      if (formData.name) updateData.name = formData.name;
+      if (formData.branch) updateData.branch = formData.branch;
+      if (formData.team) updateData.team = formData.team;
+
+      await updateDoc(userRef, updateData);
 
       // カスタムクレームの更新
       const response = await fetch('/admin/updateUser', {
@@ -155,6 +166,27 @@ export default function UserEditModal({
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'カスタムクレームの更新に失敗しました');
+      }
+
+      const responseData = await response.json();
+      
+      if (responseData.user) {
+        console.log("更新されたユーザー情報:", {
+          id: responseData.user.id,
+          email: responseData.user.email,
+          role: responseData.user.role,
+          customClaims: responseData.user.customClaims
+        });
+      }
+      
+      // 更新されたユーザーが現在のユーザーの場合、トークンを更新
+      if (user.id === currentUser.uid) {
+        const newIdToken = await currentUser.getIdToken(true);
+        const newDecodedToken = await auth.currentUser?.getIdTokenResult();
+        console.log("更新後の現在のユーザーのカスタムクレーム:", {
+          email: currentUser.email,
+          customClaims: newDecodedToken?.claims
+        });
       }
       
       toast({
