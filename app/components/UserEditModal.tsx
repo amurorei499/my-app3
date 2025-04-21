@@ -21,7 +21,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { UserData } from "@/app/utils/userData";
-import { BranchName, branches, getTeamsByBranch } from "@/app/utils/branchData";
+import { BranchName, branches as defaultBranches, getTeamsByBranch } from "@/app/utils/branchData";
 import { doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "@/app/utils/firebase";
 import { auth } from "@/app/utils/firebase";
@@ -59,6 +59,7 @@ export default function UserEditModal({
   const [saving, setSaving] = useState(false);
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [branches, setBranches] = useState<BranchName[]>(defaultBranches);
 
   // ユーザーデータをフォームにセット
   useEffect(() => {
@@ -293,11 +294,15 @@ export default function UserEditModal({
                 }}
               >
                 <option value="">支店を選択</option>
-                {branches.map((branch) => (
-                  <option key={branch} value={branch}>
-                    {branch}
-                  </option>
-                ))}
+                {branches && branches.length > 0 ? (
+                  branches.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>支店データを読み込み中...</option>
+                )}
               </Select>
             </FormControl>
             <FormControl>
