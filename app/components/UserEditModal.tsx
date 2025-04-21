@@ -81,9 +81,10 @@ export default function UserEditModal({
   useEffect(() => {
     if (formData.branch) {
       const validBranch = formData.branch as BranchName;
-      setAvailableTeams(getTeamsByBranch(validBranch));
+      const teams = getTeamsByBranch(validBranch);
+      setAvailableTeams(teams || []);
 
-      if (formData.team && !getTeamsByBranch(validBranch).includes(formData.team)) {
+      if (formData.team && teams && !teams.includes(formData.team)) {
         setFormData(prev => ({ ...prev, team: "" }));
       }
     } else {
@@ -115,6 +116,16 @@ export default function UserEditModal({
     
     setIsLoading(true);
     try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('認証されていません');
+      }
+
+      const idToken = await currentUser.getIdToken(true);
+      if (!idToken) {
+        throw new Error('認証トークンの取得に失敗しました');
+      }
+
       // Firestoreの更新
       const userRef = doc(db, "users", user.id);
       await updateDoc(userRef, {
@@ -131,7 +142,7 @@ export default function UserEditModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
           userId: user.id,
@@ -142,7 +153,8 @@ export default function UserEditModal({
       });
 
       if (!response.ok) {
-        throw new Error('カスタムクレームの更新に失敗しました');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'カスタムクレームの更新に失敗しました');
       }
       
       toast({
@@ -326,11 +338,15 @@ export default function UserEditModal({
                 }}
               >
                 <option value="">班を選択</option>
-                {availableTeams.map((team) => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
+                {availableTeams && availableTeams.length > 0 ? (
+                  availableTeams.map((team) => (
+                    <option key={team} value={team}>
+                      {team}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>班データを読み込み中...</option>
+                )}
               </Select>
             </FormControl>
             <FormControl>
