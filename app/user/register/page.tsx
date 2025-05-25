@@ -174,7 +174,7 @@ const Register = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="8文字以上で入力"
+                placeholder="6文字以上で入力"
               />
             </FormControl>
 
